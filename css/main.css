@@ -1,0 +1,342 @@
+@font-face {
+    font-family: Comfortaa;
+    src: url(../font/Comfortaa-Bold.ttf);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #e6f7f7 0%, #d6f1ec 100%);
+    color: #333;
+    text-align: center;
+    padding: 30px 20px;
+    font-family: Comfortaa;
+    overflow-x: hidden;
+}
+
+header {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    height: 100%;
+}
+
+.for_developers {
+   margin-left: 100px;
+   margin-right: 100px;
+   margin-top: 15px;
+   margin-bottom: 15px;
+   text-decoration: none;
+   font-size: 20px;
+}
+
+.for_developers:visited { 
+    color: black;
+}
+
+.help {
+    margin-left: 50px;
+    margin-right: 1000px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    text-decoration: none;
+    font-size: 20px;
+}
+
+.help:visited { 
+    color: black;
+}
+
+.container_hello {
+    justify-content: center;
+    height: 600px;
+    width: auto;
+    background-color: #ffffff;
+    display: flex;
+}
+
+.cont1{
+    margin: auto;
+}
+
+h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
+    margin-top: 200px;
+}
+
+p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+    color: #666;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.reg_button, .demo_button {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.reg_button:hover{
+    background-color: #3e8e41;
+    color: white;
+}
+
+.demo_button:hover {
+    background-color: #3e8e41;
+    color: white;
+  }
+
+.reg_button {
+    background-color: #28a745;
+    color: white;
+}
+
+.demo_button {
+    background-color: white;
+    color: #28a745;
+    border: 2px solid #28a745;
+}
+
+.had_container {
+    text-align: center;
+    padding: 30px 20px;
+    background-color: white;
+}
+
+.had_container p {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.logos img {
+    width: 100px;
+    margin: 0 10px;
+    filter: grayscale(100%);
+}
+
+.modal-background {
+    text-align: center;
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    height: 500px;
+    max-width: 500px;
+    position: relative;
+}
+
+.close-btn, .close-btn1 {
+    position: absolute;
+    top: 10px;
+    right: 25px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.close-btn1:hover,
+.close-btn1:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.surname_reg{
+    margin-top: 150px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.email_reg{
+    margin-top: 220px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 60px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.pass_reg{
+    margin-top: 300px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 100px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.surname_log{
+    margin-top: 150px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.email_log{
+    margin-top: 210px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 60px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.pass_log{
+    margin-top: 270px;
+    margin-left: 100px;
+    position: absolute;
+    top: 10px;
+    height: 100px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+.pass_log_repeat{
+    margin-top: 330px;
+    margin-left: 80px;
+    position: absolute;
+    top: 10px;
+    height: 100px;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+}
+
+
+.model_button_reg{
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+    margin-top: 260px;
+    background-color: #28a745;
+    color: white;
+}
+
+.surname_input_reg{
+    border-radius: 5px;
+    margin-top: 20px;
+    margin-left: 90px;
+    position: absolute;
+}
+
+.email_input_reg{
+    border-radius: 5px;
+    margin-top: 90px;
+    margin-left: 90px;
+    position: absolute;
+}
+
+.pass_input_reg{
+    border-radius: 5px;
+    margin-top: 170px;
+    margin-left: 90px;
+    position: absolute;
+    font-weight: 100px;
+}
+
+.surname_input_log{
+    border-radius: 5px;
+    margin-top: 20px;
+    margin-left: 37px;
+    position: absolute;
+}
+
+.email_input_log{
+    border-radius: 5px;
+    margin-top: 80px;
+    margin-left: 37px;
+    position: absolute;
+}
+
+.pass_input_log{
+    border-radius: 5px;
+    margin-top: 140px;
+    margin-left: 37px;
+    position: absolute;
+    font-weight: 100px;
+}
+
+.pass_input_log_repeat{
+    border-radius: 5px;
+    margin-top: 200px;
+    margin-left: 37px;
+    position: absolute;
+    font-weight: 100px;
+}
+
+.Login{
+    position: absolute;
+    margin-left: 140px;
+    display: flex;
+}
+
+.Registr{
+    position: absolute;
+    margin-left: 160px;
+    display: flex;
+}
+
+.Login:hover,
+.Login:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.Registr:hover,
+.Registr:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+

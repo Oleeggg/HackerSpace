@@ -1,0 +1,102 @@
+@font-face {
+    font-family: Comfortaa;
+    src: url(../font/Comfortaa-Bold.ttf);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #e6f7f7 0%, #d6f1ec 100%);
+    color: #333;
+    padding: 30px 20px;
+    overflow-x: hidden;
+    overflow: hidden;
+}
+
+header {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    height: 100%;
+}
+
+.main{
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+}
+
+
+.for_developers {
+   margin-left: 100px;
+   margin-right: 100px;
+   margin-top: 15px;
+   margin-bottom: 15px;
+   text-decoration: none;
+   font-size: 20px;
+}
+
+.for_developers:visited { 
+    color: black;
+}
+
+.help {
+    margin-left: 50px;
+    margin-right: 1000px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    text-decoration: none;
+    font-size: 20px;
+}
+
+.help:visited { 
+    color: black;
+}
+
+.buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.reg_button, .demo_button {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.reg_button:hover{
+    background-color: #3e8e41;
+    color: white;
+}
+
+.demo_button:hover {
+    background-color: #3e8e41;
+    color: white;
+  }
+
+.reg_button {
+    background-color: #28a745;
+    color: white;
+}
+
+.demo_button {
+    background-color: white;
+    color: #28a745;
+    border: 2px solid #28a745;
+}
+
+.container1{
+    width: 1000px;
+    height: 850px;
+    background-color: white;
+}
+
+.container2{
+    width: 1000px;
+    height: 850px;
+    background-color: white;
+}
