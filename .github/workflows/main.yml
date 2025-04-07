@@ -20,8 +20,8 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ vars.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Test SSH Connection
-        run: ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER_HOST }} "echo 'SSH connection successful!'"
+#      - name: Test SSH Connection
+#        run: ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ vars.SERVER_HOST }} "echo 'SSH connection successful!'"
 
       - name: Deploy via rsync
         run: |
@@ -29,7 +29,7 @@ jobs:
             --exclude=".git/" \
             --exclude=".github/" \
             --exclude="uploads/" \
-            ./ ${{ secrets.SSH_USER }}@${{ vars.SERVER_HOST }}:/var/www/html/
+            ./ ${{ vars.SERVER_USER }}@${{ vars.SERVER_HOST }}:/home/aleksey/stacks/HackerSpace/html/
 
       - name: Cleanup SSH key
         run: rm -f ~/.ssh/id_rsa
