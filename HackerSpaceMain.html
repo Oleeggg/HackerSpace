@@ -5,7 +5,7 @@
     <title>HackerSpace</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="reset.css">
-    <link rel="stylesheet" type="text/css" href="CSS/main.css">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
 </head>
 <body>
     <header>
@@ -48,6 +48,8 @@
                 <input class="email_input_reg" type="email" name="auth_email" placeholder="Введите Вашу почту" required >
                 <label class="pass_reg">Введите пароль</label>
                 <input class="pass_input_reg" type="password" name="auth_pass" placeholder="Ваш пароль" required >
+                <label class="pass_log_repeat">Повторите пароль</label>
+                <input class="pass_input_log_repeat" type="password" name="auth_pass_repeat" placeholder="Повторите пароль" required >
                 <button class="model_button_reg" type="submit">Зарегистрироваться</button>
                 <a  id="openlogmodelbtn" class="Login">Войти в существующий аккаунт</a> 
             </form>
@@ -59,14 +61,10 @@
             <h2>Авторизация</h2>
             <p>Пожалуйста, заполните форму авторизации.</p>
             <form class="modal_form">
-                <label class="surname_log">Введите ФИО</label>
-                <input class="surname_input_log" type="name" name="auth_name" placeholder="Введите Ваше ФИО" required >
                 <label class="email_log">Введите почту</label>
                 <input class="email_input_log" type="email" name="auth_email" placeholder="Введите Вашу почту" required >
                 <label class="pass_log">Введите пароль</label>
                 <input class="pass_input_log" type="password" name="auth_pass" placeholder="Ваш пароль" required >
-                <label class="pass_log_repeat">Повторите пароль</label>
-                <input class="pass_input_log_repeat" type="password" name="auth_pass_repeat" placeholder="Повторите пароль" required >
                 <button class="model_button_reg" type="submit">Войти</button>
                 <a  id="openregmodelbtn" class="Registr">Зарегистрируйтесь здесь!</a> 
             </form>
