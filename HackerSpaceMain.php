@@ -2,7 +2,7 @@
 session_start();
     
     // Настройки подключения к базе данных
-    $db_host = '3lIbTIFF68YIoK';
+    $db_host = '193.109.78.59';
     $db_user = 'mysite'; 
     $db_pass = 'Ovmj1yvFil6QEl';     
     $db_name = 'mysite';
