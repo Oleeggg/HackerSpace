@@ -1,81 +1,5 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>HackerSpace</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="reset.css">
-    <link rel="stylesheet" type="text/css" href="css/main.css">
-    <style>
-        /* Стили для профиля */
-        .user-profile-container {
-            position: fixed;
-            left: 20px;
-            bottom: 20px;
-            z-index: 1000;
-        }
-        
-        .user-profile-btn {
-            background: #2c3e50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .profile-dropdown {
-            display: none;
-            position: absolute;
-            left: 0;
-            bottom: 100%;
-            background: white;
-            min-width: 200px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        
-        .profile-dropdown a {
-            display: block;
-            padding: 12px 16px;
-            color: #333;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-        
-        .profile-dropdown a:hover {
-            background: #f5f5f5;
-        }
-        
-        .profile-dropdown.show {
-            display: block;
-        }
-        
-        .profile-name {
-            margin-left: 8px;
-        }
-        
-        /* Стили для сообщений */
-        .error-message {
-            color: red;
-            margin: 10px 0;
-        }
-        
-        .success-message {
-            color: green;
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
-    <?php
-    session_start();
+<?php
+session_start();
     
     // Настройки подключения к базе данных
     $db_host = '3lIbTIFF68YIoK';
@@ -172,7 +96,84 @@
     
     $logged_in = isset($_SESSION['user_id']);
     $user_name = $logged_in ? $_SESSION['user_name'] : '';
-    ?>
+?>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>HackerSpace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="reset.css">
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <style>
+        /* Стили для профиля */
+        .user-profile-container {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 1000;
+        }
+        
+        .user-profile-btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .profile-dropdown {
+            display: none;
+            position: absolute;
+            left: 0;
+            bottom: 100%;
+            background: white;
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .profile-dropdown a {
+            display: block;
+            padding: 12px 16px;
+            color: #333;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        
+        .profile-dropdown a:hover {
+            background: #f5f5f5;
+        }
+        
+        .profile-dropdown.show {
+            display: block;
+        }
+        
+        .profile-name {
+            margin-left: 8px;
+        }
+        
+        /* Стили для сообщений */
+        .error-message {
+            color: red;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            color: green;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
 
     <header>
         <img class="img_logo" src="">
