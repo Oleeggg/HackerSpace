@@ -78,9 +78,9 @@
     session_start();
     
     // Настройки подключения к базе данных
-    $db_host = 'localhost';
-    $db_user = 'root'; 
-    $db_pass = '';     
+    $db_host = '3lIbTIFF68YIoK';
+    $db_user = 'mysite'; 
+    $db_pass = 'Ovmj1yvFil6QEl';     
     $db_name = 'mysite';
     
     // Создаем подключение
