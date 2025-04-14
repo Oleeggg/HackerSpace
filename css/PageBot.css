@@ -14,7 +14,6 @@ body {
 }
 
 header {
-    display: flex;
     align-items: flex-start;
     flex-wrap: nowrap;
     height: 100%;
@@ -42,7 +41,7 @@ header {
 
 .help {
     margin-left: 50px;
-    margin-right: 1000px;
+    margin-right: 100px;
     margin-top: 15px;
     margin-bottom: 15px;
     text-decoration: none;
@@ -55,7 +54,6 @@ header {
 
 .buttons {
     display: flex;
-    justify-content: center;
     gap: 20px;
 }
 
@@ -90,13 +88,13 @@ header {
 }
 
 .container1{
-    width: 1000px;
-    height: 850px;
+    width: 700px;
+    height: 600px;
     background-color: white;
 }
 
 .container2{
-    width: 1000px;
-    height: 850px;
+    width: 700px;
+    height: 600px;
     background-color: white;
 }

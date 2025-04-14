@@ -22,8 +22,8 @@ header {
 }
 
 .for_developers {
-   margin-left: 100px;
-   margin-right: 100px;
+   margin-left: 50px;
+   margin-right: 50px;
    margin-top: 15px;
    margin-bottom: 15px;
    text-decoration: none;
@@ -36,7 +36,7 @@ header {
 
 .help {
     margin-left: 50px;
-    margin-right: 1000px;
+    margin-right: 500px;
     margin-top: 15px;
     margin-bottom: 15px;
     text-decoration: none;
@@ -71,7 +71,13 @@ p {
     color: #666;
 }
 
-.buttons {
+.buttons_up {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.buttons_center {
     display: flex;
     justify-content: center;
     gap: 20px;
@@ -136,6 +142,10 @@ p {
     background-color: rgba(0, 0, 0, 0.5);
 }
 
+.modal-form{
+    text-align: center;
+}
+
 .modal-content {
     background-color: #fefefe;
     margin: 10% auto;
@@ -159,20 +169,18 @@ p {
 .close-btn:hover,
 .close-btn:focus {
     color: black;
-    text-decoration: none;
     cursor: pointer;
 }
 
 .close-btn1:hover,
 .close-btn1:focus {
     color: black;
-    text-decoration: none;
     cursor: pointer;
 }
 
 .surname_reg{
-    margin-top: 150px;
-    margin-left: 100px;
+    margin-top: 95px;
+    margin-left: 75px;
     position: absolute;
     top: 10px;
     height: 20px;
@@ -182,8 +190,8 @@ p {
 }
 
 .email_reg{
-    margin-top: 220px;
-    margin-left: 100px;
+    margin-top: 155px;
+    margin-left: 60px;
     position: absolute;
     top: 10px;
     height: 60px;
@@ -193,8 +201,8 @@ p {
 }
 
 .pass_reg{
-    margin-top: 300px;
-    margin-left: 100px;
+    margin-top: 215px;
+    margin-left: 50px;
     position: absolute;
     top: 10px;
     height: 100px;
@@ -203,20 +211,9 @@ p {
     display: flex;
 }
 
-.surname_log{
-    margin-top: 150px;
-    margin-left: 100px;
-    position: absolute;
-    top: 10px;
-    height: 20px;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-}
-
 .email_log{
-    margin-top: 210px;
-    margin-left: 100px;
+    margin-top: 155px;
+    margin-left: 60px;
     position: absolute;
     top: 10px;
     height: 60px;
@@ -226,8 +223,8 @@ p {
 }
 
 .pass_log{
-    margin-top: 270px;
-    margin-left: 100px;
+    margin-top: 215px;
+    margin-left: 50px;
     position: absolute;
     top: 10px;
     height: 100px;
@@ -236,7 +233,7 @@ p {
     display: flex;
 }
 
-.pass_log_repeat{
+.pass_reg_repeat{
     margin-top: 330px;
     margin-left: 80px;
     position: absolute;
@@ -269,25 +266,19 @@ p {
 
 .email_input_reg{
     border-radius: 5px;
-    margin-top: 90px;
+    margin-top: 80px;
     margin-left: 90px;
     position: absolute;
 }
 
 .pass_input_reg{
     border-radius: 5px;
-    margin-top: 170px;
+    margin-top: 140px;
     margin-left: 90px;
     position: absolute;
     font-weight: 100px;
 }
 
-.surname_input_log{
-    border-radius: 5px;
-    margin-top: 20px;
-    margin-left: 37px;
-    position: absolute;
-}
 
 .email_input_log{
     border-radius: 5px;
@@ -304,7 +295,19 @@ p {
     font-weight: 100px;
 }
 
-.pass_input_log_repeat{
+.model_button_log{
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+    margin-top: 260px;
+    background-color: #28a745;
+    color: white;
+}
+
+.pass_input_reg_repeat{
     border-radius: 5px;
     margin-top: 200px;
     margin-left: 37px;
@@ -314,27 +317,29 @@ p {
 
 .Login{
     position: absolute;
-    margin-left: 140px;
+    margin-left: 90px;
     display: flex;
 }
 
 .Registr{
     position: absolute;
-    margin-left: 160px;
+    margin-left: 110px;
     display: flex;
 }
 
 .Login:hover,
 .Login:focus {
     color: black;
-    text-decoration: none;
+    color: blue; 
+    text-decoration: underline;
     cursor: pointer;
 }
 
 .Registr:hover,
 .Registr:focus {
     color: black;
-    text-decoration: none;
+    color: blue; 
+    text-decoration: underline;
     cursor: pointer;
 }
 
