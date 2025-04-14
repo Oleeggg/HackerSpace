@@ -17,6 +17,7 @@ header {
     align-items: flex-start;
     flex-wrap: nowrap;
     height: 100%;
+    display: flex;
 }
 
 .main{
@@ -53,8 +54,9 @@ header {
 }
 
 .buttons {
-    display: flex;
     gap: 20px;
+    top: 5px; 
+    left: 10px;
 }
 
 .reg_button, .demo_button {
@@ -81,20 +83,27 @@ header {
     color: white;
 }
 
-.demo_button {
-    background-color: white;
-    color: #28a745;
-    border: 2px solid #28a745;
-}
-
 .container1{
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 700px;
-    height: 600px;
+    height: 650px;
     background-color: white;
 }
 
 .container2{
     width: 700px;
-    height: 600px;
+    height: 650px;
     background-color: white;
 }
+
+.button_start{
+    padding: 15px 30px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+

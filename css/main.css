@@ -342,6 +342,136 @@ p {
     text-decoration: underline;
     cursor: pointer;
 }
+.user-profile-container {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 1000;
+        }
+        
+        .user-profile-btn {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .profile-dropdown {
+            display: none;
+            position: absolute;
+            left: 0;
+            bottom: 100%;
+            background: white;
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .profile-dropdown a {
+            display: block;
+            padding: 12px 16px;
+            color: #333;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        
+        .profile-dropdown a:hover {
+            background: #f5f5f5;
+        }
+        
+        .profile-dropdown.show {
+            display: block;
+        }
+        
+        .profile-name {
+            margin-left: 8px;
+        }
+        
+        /* Стили для сообщений */
+        .message-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .message-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+        
+        .error-message {
+            color: red;
+            margin: 10px 0;
+        }
+        
+        .success-message {
+            color: green;
+            margin: 10px 0;
+        }
+        
+        .close-message-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .modal-background {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .close-btn {
+            float: right;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+         /* Скрытие кнопок регистрации для авторизованных */
+        .logged-in-hide {
+            display: none !important;
+        }
+
 
 
 

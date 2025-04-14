@@ -105,134 +105,6 @@ session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="reset.css">
     <link rel="stylesheet" type="text/css" href="css/main.css">
-    <style>
-        /* Стили для профиля */
-        .user-profile-container {
-            position: fixed;
-            left: 20px;
-            bottom: 20px;
-            z-index: 1000;
-        }
-        
-        .user-profile-btn {
-            background: #2c3e50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        
-        .profile-dropdown {
-            display: none;
-            position: absolute;
-            left: 0;
-            bottom: 100%;
-            background: white;
-            min-width: 200px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-        
-        .profile-dropdown a {
-            display: block;
-            padding: 12px 16px;
-            color: #333;
-            text-decoration: none;
-            transition: background 0.2s;
-        }
-        
-        .profile-dropdown a:hover {
-            background: #f5f5f5;
-        }
-        
-        .profile-dropdown.show {
-            display: block;
-        }
-        
-        .profile-name {
-            margin-left: 8px;
-        }
-        
-        /* Стили для сообщений */
-        .message-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .message-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 400px;
-            width: 90%;
-            text-align: center;
-            position: relative;
-        }
-        
-        .error-message {
-            color: red;
-            margin: 10px 0;
-        }
-        
-        .success-message {
-            color: green;
-            margin: 10px 0;
-        }
-        
-        .close-message-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            font-size: 20px;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-        
-        .modal-background {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            max-width: 400px;
-            width: 90%;
-        }
-        
-        .close-btn {
-            float: right;
-            font-size: 20px;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -240,8 +112,10 @@ session_start();
         <a class="for_developers" href="HackerSpaceForDevelopers.html">Для разработчиков</a>
         <a class="help" href="">Помощь по продукту</a>
         <div class="buttons_up">
+            <?php if (!$logged_in): ?>
                 <button id="openModalBtn" class="reg_button">Зарегистрироваться</button>
-                <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
+            <?php endif; ?>
+            <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
         </div>
     </header>
 
@@ -251,7 +125,9 @@ session_start();
                 <h1>Навыки говорят громче слов!</h1>
                 <p>Мы помогаем компаниям развивать сильнейшие технические команды. Мы помогаем участникам оттачивать свои технические навыки!</p>
                 <div class="buttons_center">
-                    <button id="openModalBtn2" class="reg_button">Зарегистрироваться</button>
+                    <?php if (!$logged_in): ?>
+                        <button id="openModalBtn2" class="reg_button">Зарегистрироваться</button>
+                    <?php endif; ?>
                     <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
                 </div>
             </div>
@@ -403,56 +279,6 @@ session_start();
                 modal.style.display = 'none';
             });
         }, 5000);
-    </script>
-    <script src="js/regmodelwindow.js"></script>
-    <script src="js/logmodelwindow.js"></script>
-</body>
-</html>
-
-    <script>
-        // Обработка клика по профилю
-        document.getElementById('profileBtn')?.addEventListener('click', function() {
-            document.getElementById('profileDropdown').classList.toggle('show');
-        });
-        
-        // Закрытие меню при клике вне его
-        window.addEventListener('click', function(event) {
-            if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
-                var dropdown = document.getElementById('profileDropdown');
-                if (dropdown?.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                }
-            }
-        });
-        
-        // Переключение между модальными окнами
-        document.getElementById('openlogmodelbtn')?.addEventListener('click', function() {
-            document.getElementById('modalBackground').style.display = 'none';
-            document.getElementById('modalBackground2').style.display = 'flex';
-        });
-        
-        document.getElementById('openregmodelbtn')?.addEventListener('click', function() {
-            document.getElementById('modalBackground2').style.display = 'none';
-            document.getElementById('modalBackground').style.display = 'flex';
-        });
-        
-        // Закрытие модальных окон
-        document.querySelector('.close-btn')?.addEventListener('click', function() {
-            document.getElementById('modalBackground').style.display = 'none';
-        });
-        
-        document.querySelector('.close-btn1')?.addEventListener('click', function() {
-            document.getElementById('modalBackground2').style.display = 'none';
-        });
-        
-        // Открытие модальных окон по кнопкам
-        document.getElementById('openModalBtn')?.addEventListener('click', function() {
-            document.getElementById('modalBackground').style.display = 'flex';
-        });
-        
-        document.getElementById('openModalBtn2')?.addEventListener('click', function() {
-            document.getElementById('modalBackground').style.display = 'flex';
-        });
     </script>
     <script src="js/regmodelwindow.js"></script>
     <script src="js/logmodelwindow.js"></script>
