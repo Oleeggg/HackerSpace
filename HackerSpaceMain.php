@@ -161,6 +161,29 @@ session_start();
         }
         
         /* Стили для сообщений */
+        .message-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .message-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+        
         .error-message {
             color: red;
             margin: 10px 0;
@@ -170,16 +193,53 @@ session_start();
             color: green;
             margin: 10px 0;
         }
+        
+        .close-message-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+        
+        .modal-background {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .close-btn {
+            float: right;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
     </style>
 </head>
 <body>
-
-
     <header>
         <img class="img_logo" src="">
         <a class="for_developers" href="HackerSpaceForDevelopers.html">Для разработчиков</a>
         <a class="help" href="">Помощь по продукту</a>
-        <div class="buttons">
+        <div class="buttons_up">
                 <button id="openModalBtn" class="reg_button">Зарегистрироваться</button>
                 <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
         </div>
@@ -190,7 +250,7 @@ session_start();
             <div>
                 <h1>Навыки говорят громче слов!</h1>
                 <p>Мы помогаем компаниям развивать сильнейшие технические команды. Мы помогаем участникам оттачивать свои технические навыки!</p>
-                <div class="buttons">
+                <div class="buttons_center">
                     <button id="openModalBtn2" class="reg_button">Зарегистрироваться</button>
                     <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
                 </div>
@@ -213,10 +273,10 @@ session_start();
         </button>
         
         <div class="profile-dropdown" id="profileDropdown">
-            <a href="my_profile.html">My Profile</a>
-            <a href="settings.html">Settings</a>
-            <a href="contact.html">Contact us</a>
-            <a href="?logout">Log out</a>
+            <a href="my_profile.html">Профиль</a>
+            <a href="settings.html">Настройки</a>
+            <a href="contact.html">Контакт с нами</a>
+            <a href="?logout">Выйти из аккаунта</a>
         </div>
     </div>
     <?php endif; ?>
@@ -226,13 +286,8 @@ session_start();
         <div class="modal-content">
             <span class="close-btn">&times;</span>
             <h2>Регистрация</h2>
-            <?php if (!empty($reg_error)): ?>
-                <p class="error-message"><?php echo $reg_error; ?></p>
-            <?php elseif (!empty($reg_success)): ?>
-                <p class="success-message"><?php echo $reg_success; ?></p>
-            <?php endif; ?>
             <form class="modal_form" method="POST" action="">
-                <label class="surname_reg">Введите имя пользователя</label>
+                <label class="surname_reg">Введите имя</label>
                 <input class="surname_input_reg" type="text" name="auth_name" placeholder="Введите ваше имя" required>
                 <label class="email_reg">Введите почту</label>
                 <input class="email_input_reg" type="email" name="auth_email" placeholder="Введите вашу почту" required>
@@ -249,9 +304,6 @@ session_start();
         <div class="modal-content">
             <span class="close-btn1">&times;</span>
             <h2>Авторизация</h2>
-            <?php if (!empty($login_error)): ?>
-                <p class="error-message"><?php echo $login_error; ?></p>
-            <?php endif; ?>
             <form class="modal_form" method="POST" action="">
                 <label class="email_log">Введите почту</label>
                 <input class="email_input_log" type="email" name="auth_email" placeholder="Введите вашу почту" required>
@@ -262,6 +314,100 @@ session_start();
             </form>
         </div>
     </div>
+
+    <!-- Модальное окно ошибки регистрации -->
+    <?php if (!empty($reg_error)): ?>
+    <div id="errorModal" class="message-modal" style="display: flex;">
+        <div class="message-content">
+            <button class="close-message-btn">&times;</button>
+            <p class="error-message"><?php echo $reg_error; ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Модальное окно успешной регистрации -->
+    <?php if (!empty($reg_success)): ?>
+    <div id="successModal" class="message-modal" style="display: flex;">
+        <div class="message-content">
+            <button class="close-message-btn">&times;</button>
+            <p class="success-message"><?php echo $reg_success; ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Модальное окно ошибки авторизации -->
+    <?php if (!empty($login_error)): ?>
+    <div id="loginErrorModal" class="message-modal" style="display: flex;">
+        <div class="message-content">
+            <button class="close-message-btn">&times;</button>
+            <p class="error-message"><?php echo $login_error; ?></p>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script>
+        // Обработка клика по профилю
+        document.getElementById('profileBtn')?.addEventListener('click', function() {
+            document.getElementById('profileDropdown').classList.toggle('show');
+        });
+        
+        // Закрытие меню при клике вне его
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
+                var dropdown = document.getElementById('profileDropdown');
+                if (dropdown?.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        });
+        
+        // Переключение между модальными окнами
+        document.getElementById('openlogmodelbtn')?.addEventListener('click', function() {
+            document.getElementById('modalBackground').style.display = 'none';
+            document.getElementById('modalBackground2').style.display = 'flex';
+        });
+        
+        document.getElementById('openregmodelbtn')?.addEventListener('click', function() {
+            document.getElementById('modalBackground2').style.display = 'none';
+            document.getElementById('modalBackground').style.display = 'flex';
+        });
+        
+        // Закрытие модальных окон
+        document.querySelector('.close-btn')?.addEventListener('click', function() {
+            document.getElementById('modalBackground').style.display = 'none';
+        });
+        
+        document.querySelector('.close-btn1')?.addEventListener('click', function() {
+            document.getElementById('modalBackground2').style.display = 'none';
+        });
+        
+        // Открытие модальных окон по кнопкам
+        document.getElementById('openModalBtn')?.addEventListener('click', function() {
+            document.getElementById('modalBackground').style.display = 'flex';
+        });
+        
+        document.getElementById('openModalBtn2')?.addEventListener('click', function() {
+            document.getElementById('modalBackground').style.display = 'flex';
+        });
+        
+        // Закрытие сообщений
+        document.querySelectorAll('.close-message-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.message-modal').style.display = 'none';
+            });
+        });
+        
+        // Автоматическое закрытие сообщений через 5 секунд
+        setTimeout(() => {
+            document.querySelectorAll('.message-modal').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }, 5000);
+    </script>
+    <script src="js/regmodelwindow.js"></script>
+    <script src="js/logmodelwindow.js"></script>
+</body>
+</html>
 
     <script>
         // Обработка клика по профилю
