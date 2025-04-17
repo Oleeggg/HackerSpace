@@ -14,9 +14,9 @@
     }
     
     // Настройки подключения к базе данных
-    $db_host = 'localhost';
-    $db_user = 'root'; 
-    $db_pass = '';     
+    $db_host = 'mysql';
+    $db_user = 'mysite'; 
+    $db_pass = 'Ovmj1yvFil6QEl';     
     $db_name = 'mysite';
     
     // Создаем подключение
@@ -151,7 +151,7 @@
         header("Location: ".$_SERVER['PHP_SELF']);
         exit();
     }
-?>
+    ?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -412,9 +412,6 @@
         document.querySelector('.logout-btn')?.addEventListener('click', function() {
             window.location.href = '?logout';
         });
-        
-        // Остальные обработчики событий остаются без изменений
-        // ...
     </script>
 </body>
 </html>
