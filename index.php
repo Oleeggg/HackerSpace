@@ -125,43 +125,43 @@ if (isset($_POST['send_feedback'])) {
     if (empty($message)) {
         $feedback_error = 'Пожалуйста, введите ваше сообщение';
     } else {
-        // Получаем email пользователя
-        $stmt = $conn->prepare("SELECT email FROM users WHERE id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $user = $result->fetch_assoc();
-        $user_email = $user['email'];
-        $stmt->close();
-        
-        // Настройки письма
-        $to = "shuvalovv1444@gmail.com";
-        $subject = "Обратная связь от пользователя HackerSpace";
-        
-        // Улучшенные заголовки
-        $headers = [
-            'From' => 'noreply@'.$_SERVER['HTTP_HOST'],
-            'Reply-To' => $user_email,
-            'X-Mailer' => 'PHP/'.phpversion(),
-            'MIME-Version' => '1.0',
-            'Content-Type' => 'text/plain; charset=utf-8',
-            'X-Priority' => '3'
-        ];
-        
-        // Форматируем заголовки
-        $headers_str = '';
-        foreach ($headers as $key => $value) {
-            $headers_str .= "$key: $value\r\n";
-        }
-        
-        $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
-                     "Email: " . $user_email . "\n\n" .
-                     "Сообщение:\n" . $message;
-        
-        // Логирование перед отправкой (для отладки)
-        error_log("Attempting to send mail to: $to");
-        
-        if (mail($to, $subject, $email_body, $headers_str)) {
+        try {
+            // Получаем email пользователя
+            $stmt = $conn->prepare("SELECT email FROM users WHERE id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $user = $result->fetch_assoc();
+            $user_email = $user['email'];
+            $stmt->close();
+            
+            // Настройка PHPMailer
+            $mail = new PHPMailer(true);
+            
+            // Настройки сервера
+            $mail->isSMTP();
+            $mail->Host = 'smtp.yandex.ru'; // Укажите ваш SMTP сервер
+            $mail->SMTPAuth = true;
+            $mail->Username = 'your_email@yandex.ru'; // Ваш email
+            $mail->Password = 'your_password'; // Пароль от email
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port = 465;
+            
+            // Отправитель и получатель
+            $mail->setFrom('noreply@'.$_SERVER['HTTP_HOST'], 'HackerSpace');
+            $mail->addAddress('shuvalovv1444@gmail.com', 'Admin');
+            $mail->addReplyTo($user_email, $user_name);
+            
+            // Содержание письма
+            $mail->isHTML(false);
+            $mail->Subject = "Обратная связь от пользователя HackerSpace";
+            $mail->Body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
+                         "Email: " . $user_email . "\n\n" .
+                         "Сообщение:\n" . $message;
+            
+            // Отправка письма
+            $mail->send();
+            
             $feedback_success = 'Ваше сообщение успешно отправлено!';
             
             // Сохраняем в базу данных
@@ -169,11 +169,10 @@ if (isset($_POST['send_feedback'])) {
             $stmt->bind_param("is", $user_id, $message);
             $stmt->execute();
             $stmt->close();
-        } else {
-            $error = error_get_last();
-            $feedback_error = 'Ошибка отправки сообщения. ';
-            $feedback_error .= isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
-            error_log("Mail send failed: " . print_r($error, true));
+            
+        } catch (Exception $e) {
+            $feedback_error = "Ошибка отправки сообщения. Mailer Error: {$mail->ErrorInfo}";
+            error_log("Mail send failed: " . $e->getMessage());
         }
     }
 }
