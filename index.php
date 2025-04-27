@@ -124,7 +124,7 @@ if (isset($_POST['send_feedback'])) {
         $feedback_error = 'Пожалуйста, введите ваше сообщение';
     } else {
         try {
-            // Получаем email пользователя
+            // Получаем email пользователя (только для подстановки в письмо)
             $stmt = $conn->prepare("SELECT email FROM users WHERE id = ?");
             $stmt->bind_param("i", $user_id);
             $stmt->execute();
@@ -136,12 +136,12 @@ if (isset($_POST['send_feedback'])) {
             // Настройка PHPMailer
             $mail = new PHPMailer(true);
             
-            // Настройки сервера для Yandex
+            // Настройки сервера для Outlook
             $mail->isSMTP();
             $mail->Host = 'smtp-mail.outlook.com';
             $mail->SMTPAuth = true;
-            $mail->Username = '21200172@live.preco.ru'; // Полный email
-            $mail->Password = '7519356463'; // Пароль от почты ИЛИ пароль приложения
+            $mail->Username = '21200172@live.preco.ru';
+            $mail->Password = '7519356463';
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             $mail->CharSet = 'UTF-8';
@@ -160,12 +160,6 @@ if (isset($_POST['send_feedback'])) {
             
             $mail->send();
             $feedback_success = 'Ваше сообщение успешно отправлено!';
-            
-            // Сохраняем в базу данных
-            $stmt = $conn->prepare("INSERT INTO feedback (user_id, message) VALUES (?, ?)");
-            $stmt->bind_param("is", $user_id, $message);
-            $stmt->execute();
-            $stmt->close();
             
         } catch (Exception $e) {
             $feedback_error = "Ошибка отправки сообщения. Mailer Error: {$mail->ErrorInfo}";
