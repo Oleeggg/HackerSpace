@@ -247,7 +247,7 @@ if (isset($_POST['send_feedback'])) {
                     <?php if (!$logged_in): ?>
                         <button id="openModalBtn2" class="reg_button">Зарегистрироваться</button>
                     <?php endif; ?>
-                    <a class="demo_button" href="HackerSpacePageBot.ph">Запросить демо</a>
+                    <a class="demo_button" href="HackerSpacePageBot.php">Запросить демо</a>
                 </div>
             </div>
         </div>
