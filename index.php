@@ -117,53 +117,53 @@ use PHPMailer\PHPMailer\Exception;
 $feedback_success = '';
 $feedback_error = '';
 if (isset($_POST['send_feedback'])) {
-    $message = trim($_POST['feedback_message']);
-    $user_id = $_SESSION['user_id'];
-    
-    if (empty($message)) {
-        $feedback_error = 'Пожалуйста, введите ваше сообщение';
+    // Проверяем авторизацию пользователя
+    if (!isset($_SESSION['user_id'])) {
+        $feedback_error = 'Для отправки сообщения необходимо авторизоваться';
     } else {
-        try {
-            // Получаем email пользователя (только для подстановки в письмо)
-            $stmt = $conn->prepare("SELECT email FROM users WHERE id = ?");
-            $stmt->bind_param("i", $user_id);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $user = $result->fetch_assoc();
-            $user_email = $user['email'];
-            $stmt->close();
-            
-            // Настройка PHPMailer
-            $mail = new PHPMailer(true);
-            
-            // Настройки сервера для Outlook
-            $mail->isSMTP();
-            $mail->Host = 'smtp-mail.outlook.com';
-            $mail->SMTPAuth = true;
-            $mail->Username = '21200172@live.preco.ru';
-            $mail->Password = '7519356463';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port = 587;
-            $mail->CharSet = 'UTF-8';
-            
-            // Отправитель должен совпадать с учётной записью
-            $mail->setFrom('21200172@live.preco.ru', 'HackerSpace');
-            $mail->addAddress('21200172@live.preco.ru', 'Admin');
-            $mail->addReplyTo($user_email, $_SESSION['user_name']);
-            
-            // Содержание письма
-            $mail->isHTML(false);
-            $mail->Subject = "Обратная связь от пользователя HackerSpace";
-            $mail->Body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
-                         "Email: " . $user_email . "\n\n" .
-                         "Сообщение:\n" . $message;
-            
-            $mail->send();
-            $feedback_success = 'Ваше сообщение успешно отправлено!';
-            
-        } catch (Exception $e) {
-            $feedback_error = "Ошибка отправки сообщения. Mailer Error: {$mail->ErrorInfo}";
-            error_log("Mail send failed: " . $e->getMessage());
+        $message = trim($_POST['feedback_message'] ?? '');
+        
+        if (empty($message)) {
+            $feedback_error = 'Пожалуйста, введите ваше сообщение';
+        } else {
+            try {
+                // Получаем данные пользователя из сессии
+                $user_id = $_SESSION['user_id'] ?? null;
+                $user_name = $_SESSION['user_name'] ?? 'Пользователь';
+                $user_email = $_SESSION['user_email'] ?? 'unknown@example.com';
+                
+                // Настройка PHPMailer
+                $mail = new PHPMailer(true);
+                
+                // Настройки сервера для Outlook
+                $mail->isSMTP();
+                $mail->Host = 'smtp-mail.outlook.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = '21200172@live.preco.ru';
+                $mail->Password = '7519356463';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = 587;
+                $mail->CharSet = 'UTF-8';
+                
+                // Отправитель должен совпадать с учётной записью
+                $mail->setFrom('21200172@live.preco.ru', 'HackerSpace');
+                $mail->addAddress('21200172@live.preco.ru', 'Admin');
+                $mail->addReplyTo($user_email, $user_name);
+                
+                // Содержание письма
+                $mail->isHTML(false);
+                $mail->Subject = "Обратная связь от пользователя HackerSpace";
+                $mail->Body = "Сообщение от пользователя: " . $user_name . "\n" .
+                             "Email: " . $user_email . "\n\n" .
+                             "Сообщение:\n" . $message;
+                
+                $mail->send();
+                $feedback_success = 'Ваше сообщение успешно отправлено!';
+                
+            } catch (Exception $e) {
+                $feedback_error = "Ошибка отправки сообщения. Mailer Error: {$mail->ErrorInfo}";
+                error_log("Mail send failed: " . $e->getMessage());
+            }
         }
     }
 }
