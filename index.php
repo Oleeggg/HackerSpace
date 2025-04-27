@@ -150,7 +150,7 @@ if (isset($_POST['send_feedback'])) {
             
             // Отправитель должен совпадать с учётной записью
             $mail->setFrom('noreply@hackerspace.ru', 'HackerSpace');
-            $mail->addAddress('21200172"live.preco.ru', 'Admin');
+            $mail->addAddress('21200172@live.preco.ru', 'Admin');
             $mail->addReplyTo($user_email, $_SESSION['user_name']);
             
             // Содержание письма
