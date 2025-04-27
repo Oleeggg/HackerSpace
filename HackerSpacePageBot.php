@@ -1,4 +1,15 @@
 <?php
+
+require_once('../phpmailer/src/PHPMailer.php');
+require_once('../phpmailer/src/SMTP.php');
+require_once('../phpmailer/src/Exception.php');
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+$mail = new PHPMailer(true);
+$mail->CharSet = 'utf-8';
 // Усиленная защита сессии
 session_start([
     'cookie_lifetime' => 86400,
