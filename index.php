@@ -138,19 +138,20 @@ if (isset($_POST['send_feedback'])) {
             // Настройка PHPMailer
             $mail = new PHPMailer(true);
             
-            // Настройки сервера
+            // Настройки сервера для Yandex
             $mail->isSMTP();
-            $mail->Host = 'smtp.yandex.ru'; // Укажите ваш SMTP сервер
+            $mail->Host = 'smtp.yandex.ru';
             $mail->SMTPAuth = true;
-            $mail->Username = 'your_email@yandex.ru'; // Ваш email
-            $mail->Password = 'your_password'; // Пароль от email
+            $mail->Username = '21200172"live.preco.ru'; // Полный email
+            $mail->Password = '7519356463'; // Пароль от почты ИЛИ пароль приложения
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
             $mail->Port = 465;
+            $mail->CharSet = 'UTF-8';
             
-            // Отправитель и получатель
-            $mail->setFrom('noreply@'.$_SERVER['HTTP_HOST'], 'HackerSpace');
-            $mail->addAddress('shuvalovv1444@gmail.com', 'Admin');
-            $mail->addReplyTo($user_email, $user_name);
+            // Отправитель должен совпадать с учётной записью
+            $mail->setFrom('noreply@hackerspace.ru', 'HackerSpace');
+            $mail->addAddress('21200172"live.preco.ru', 'Admin');
+            $mail->addReplyTo($user_email, $_SESSION['user_name']);
             
             // Содержание письма
             $mail->isHTML(false);
@@ -159,9 +160,7 @@ if (isset($_POST['send_feedback'])) {
                          "Email: " . $user_email . "\n\n" .
                          "Сообщение:\n" . $message;
             
-            // Отправка письма
             $mail->send();
-            
             $feedback_success = 'Ваше сообщение успешно отправлено!';
             
             // Сохраняем в базу данных
