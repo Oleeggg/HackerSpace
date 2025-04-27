@@ -147,7 +147,7 @@ if (isset($_POST['send_feedback'])) {
             $mail->CharSet = 'UTF-8';
             
             // Отправитель должен совпадать с учётной записью
-            $mail->setFrom('noreply@hackerspace.ru', 'HackerSpace');
+            $mail->setFrom('21200172@live.preco.ru', 'HackerSpace');
             $mail->addAddress('21200172@live.preco.ru', 'Admin');
             $mail->addReplyTo($user_email, $_SESSION['user_name']);
             
