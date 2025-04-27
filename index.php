@@ -14,9 +14,9 @@
     }
     
     // Настройки подключения к базе данных
-    $db_host = 'mysql';
-    $db_user = 'mysite'; 
-    $db_pass = 'Ovmj1yvFil6QEl';     
+    $db_host = 'localhost';
+    $db_user = 'root'; 
+    $db_pass = '';     
     $db_name = 'mysite';
     
     // Создаем подключение
@@ -26,7 +26,7 @@
     if ($conn->connect_error) {
         die("Ошибка подключения: " . $conn->connect_error);
     }
-
+    
     
     // Обработка регистрации
     $reg_error = '';
@@ -103,6 +103,49 @@
             $stmt->close();
         }
     }
+
+    // Обработка формы обратной связи
+$feedback_success = '';
+$feedback_error = '';
+if (isset($_POST['send_feedback'])) {
+    $message = trim($_POST['feedback_message']);
+    $user_id = $_SESSION['user_id'];
+    
+    if (empty($message)) {
+        $feedback_error = 'Пожалуйста, введите ваше сообщение';
+    } else {
+        // Получаем email пользователя
+        $stmt = $conn->prepare("SELECT email FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+        $user_email = $user['email'];
+        $stmt->close();
+        
+        // Отправка email (замените на реальный email)
+        $to = "shuvalovv1444@gmail.com";
+        $subject = "Обратная связь от пользователя HackerSpace";
+        $headers = "From: " . $user_email . "\r\n";
+        $headers .= "Reply-To: " . $user_email . "\r\n";
+        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        
+        $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n";
+        $email_body .= "Email: " . $user_email . "\n\n";
+        $email_body .= "Сообщение:\n" . $message . "\n";
+        
+        if (mail($to, $subject, $email_body, $headers)) {
+            $feedback_success = 'Ваше сообщение успешно отправлено!';
+            // Можно также сохранить сообщение в базу данных
+            $stmt = $conn->prepare("INSERT INTO feedback (user_id, message) VALUES (?, ?)");
+            $stmt->bind_param("is", $user_id, $message);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            $feedback_error = 'Произошла ошибка при отправке сообщения. Пожалуйста, попробуйте позже.';
+        }
+    }
+}
     
     // Проверка валидности сессии
     $logged_in = false;
@@ -126,7 +169,7 @@
             session_unset();
             session_destroy();
             header("Location: ".$_SERVER['PHP_SELF']);
-            exit();
+                exit();
         }
     }
     
@@ -168,9 +211,9 @@
         <a class="help" href="">Помощь по продукту</a>
         <div class="buttons_up">
             <?php if (!$logged_in): ?>
-                <button id="openModalBtn" class="reg_button">Зарегистрироваться</button>
+                <button id="openLoginModalBtn" class="reg_button">Войти</button>
             <?php endif; ?>
-            <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
+            <a class="demo_button" href="HackerSpacePageBot.php">Запросить демо</a>
         </div>
     </header>
 
@@ -183,7 +226,7 @@
                     <?php if (!$logged_in): ?>
                         <button id="openModalBtn2" class="reg_button">Зарегистрироваться</button>
                     <?php endif; ?>
-                    <a class="demo_button" href="HackerSpacePageBot.html">Запросить демо</a>
+                    <a class="demo_button" href="HackerSpacePageBot.ph">Запросить демо</a>
                 </div>
             </div>
         </div>
@@ -288,6 +331,28 @@
         </div>
     </div>
 
+    <!-- Модальное окно обратной связи -->
+    <div id="feedbackModal" class="feedback-modal">
+        <div class="feedback-content">
+            <div class="feedback-header">
+                <h2>Обратная связь</h2>
+                <span class="feedback-close">&times;</span>
+            </div>
+            <form class="feedback-form" method="POST" action="">
+                <textarea name="feedback_message" placeholder="Напишите ваше сообщение здесь..." required></textarea>
+                <button type="submit" name="send_feedback">Отправить</button>
+                <div class="feedback-success" <?php if (!empty($feedback_success)) echo 'style="display: block;"'; ?>>
+                    <?php echo $feedback_success; ?>
+                </div>
+                <div class="feedback-error" <?php if (!empty($feedback_error)) echo 'style="display: block;"'; ?>>
+                    <?php echo $feedback_error; ?>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="overlay" class="overlay"></div>
+
     <!-- Модальное окно ошибки регистрации -->
     <?php if (!empty($reg_error)): ?>
     <div id="errorModal" class="message-modal" style="display: flex;">
@@ -355,8 +420,8 @@
         });
         
         // Открытие модальных окон по кнопкам
-        document.getElementById('openModalBtn')?.addEventListener('click', function() {
-            document.getElementById('modalBackground').style.display = 'flex';
+        document.getElementById('openLoginModalBtn')?.addEventListener('click', function() {
+            document.getElementById('modalBackground2').style.display = 'flex';
         });
         
         document.getElementById('openModalBtn2')?.addEventListener('click', function() {
@@ -394,10 +459,7 @@
                 document.getElementById('profileModal').style.display = 'none';
             }
         });
-    </script>
-    <script src="js/regmodelwindow.js"></script>
-    <script src="js/logmodelwindow.js"></script>
-        <script>
+
         // Обработка кнопки удаления аккаунта
         document.querySelector('.delete-btn')?.addEventListener('click', function() {
             document.getElementById('confirmDeleteModal').style.display = 'flex';
@@ -413,5 +475,35 @@
             window.location.href = '?logout';
         });
     </script>
+    <script>
+        // Обработка кнопки "Контакт с нами"
+        document.querySelector('a[href="contact.html"]')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('profileDropdown').classList.remove('show');
+            document.getElementById('feedbackModal').classList.add('show');
+            document.getElementById('overlay').classList.add('show');
+        });
+        
+        // Закрытие модального окна обратной связи
+        document.querySelector('.feedback-close')?.addEventListener('click', function() {
+            document.getElementById('feedbackModal').classList.remove('show');
+            document.getElementById('overlay').classList.remove('show');
+        });
+        
+        // Закрытие при клике на overlay
+        document.getElementById('overlay')?.addEventListener('click', function() {
+            document.getElementById('feedbackModal').classList.remove('show');
+            this.classList.remove('show');
+        });
+        
+        // Автоматическое закрытие сообщений через 5 секунд
+        setTimeout(() => {
+            document.querySelectorAll('.feedback-success, .feedback-error').forEach(el => {
+                el.style.display = 'none';
+            });
+        }, 5000);
+    </script>
+    <script src="js/regmodelwindow.js"></script>
+    <script src="js/logmodelwindow.js"></script>
 </body>
 </html>
