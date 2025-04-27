@@ -115,7 +115,7 @@ $mail->isSendmail();
         }
     }
 
- // Обработка формы обратной связи
+// Обработка формы обратной связи
 $feedback_success = '';
 $feedback_error = '';
 if (isset($_POST['send_feedback'])) {
@@ -137,15 +137,31 @@ if (isset($_POST['send_feedback'])) {
         // Настройки письма
         $to = "shuvalovv1444@gmail.com";
         $subject = "Обратная связь от пользователя HackerSpace";
-        $headers = "From: no-reply@hackerspace.com\r\n";
-        $headers .= "Reply-To: $user_email\r\n";
-        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        
+        // Улучшенные заголовки
+        $headers = [
+            'From' => 'noreply@'.$_SERVER['HTTP_HOST'],
+            'Reply-To' => $user_email,
+            'X-Mailer' => 'PHP/'.phpversion(),
+            'MIME-Version' => '1.0',
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'X-Priority' => '3'
+        ];
+        
+        // Форматируем заголовки
+        $headers_str = '';
+        foreach ($headers as $key => $value) {
+            $headers_str .= "$key: $value\r\n";
+        }
         
         $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
                      "Email: " . $user_email . "\n\n" .
                      "Сообщение:\n" . $message;
         
-        if (mail($to, $subject, $email_body, $headers)) {
+        // Логирование перед отправкой (для отладки)
+        error_log("Attempting to send mail to: $to");
+        
+        if (mail($to, $subject, $email_body, $headers_str)) {
             $feedback_success = 'Ваше сообщение успешно отправлено!';
             
             // Сохраняем в базу данных
@@ -154,7 +170,10 @@ if (isset($_POST['send_feedback'])) {
             $stmt->execute();
             $stmt->close();
         } else {
-            $feedback_error = 'Произошла ошибка при отправке сообщения.';
+            $error = error_get_last();
+            $feedback_error = 'Ошибка отправки сообщения. ';
+            $feedback_error .= isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
+            error_log("Mail send failed: " . print_r($error, true));
         }
     }
 }
