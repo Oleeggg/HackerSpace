@@ -115,7 +115,7 @@ $mail->isSendmail();
         }
     }
 
-  // Обработка формы обратной связи
+ // Обработка формы обратной связи
 $feedback_success = '';
 $feedback_error = '';
 if (isset($_POST['send_feedback'])) {
@@ -134,47 +134,27 @@ if (isset($_POST['send_feedback'])) {
         $user_email = $user['email'];
         $stmt->close();
         
-        try {
-            // Создаем новый экземпляр PHPMailer
-            $mail = new PHPMailer(true);
+        // Настройки письма
+        $to = "shuvalovv1444@gmail.com";
+        $subject = "Обратная связь от пользователя HackerSpace";
+        $headers = "From: no-reply@hackerspace.com\r\n";
+        $headers .= "Reply-To: $user_email\r\n";
+        $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
+        
+        $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
+                     "Email: " . $user_email . "\n\n" .
+                     "Сообщение:\n" . $message;
+        
+        if (mail($to, $subject, $email_body, $headers)) {
+            $feedback_success = 'Ваше сообщение успешно отправлено!';
             
-            // Настройка Sendmail
-            $mail->isSendmail(); // Используем локальный sendmail
-            
-            // Устанавливаем кодировку
-            $mail->CharSet = 'UTF-8';
-            
-            // От кого (фиктивный email вашего домена)
-            $mail->setFrom('no-reply@hackerspace.com', 'HackerSpace Support');
-            
-            // Кому (ваша реальная почта)
-            $mail->addAddress('shuvalovv1444@gmail.com', 'Support Team');
-            
-            // Email для ответа (почта пользователя)
-            $mail->addReplyTo($user_email, $_SESSION['user_name']);
-            
-            // Тема и тело письма
-            $mail->Subject = "Обратная связь от пользователя HackerSpace";
-            $mail->Body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
-                         "Email: " . $user_email . "\n\n" .
-                         "Сообщение:\n" . $message;
-            
-            // Отправка письма
-            if ($mail->send()) {
-                $feedback_success = 'Ваше сообщение успешно отправлено!';
-                
-                // Сохраняем в базу данных
-                $stmt = $conn->prepare("INSERT INTO feedback (user_id, message) VALUES (?, ?)");
-                $stmt->bind_param("is", $user_id, $message);
-                $stmt->execute();
-                $stmt->close();
-            } else {
-                $feedback_error = 'Произошла ошибка при отправке сообщения.';
-            }
-            
-        } catch (Exception $e) {
-            $feedback_error = "Ошибка отправки: " . $e->getMessage();
-            error_log("Mailer Error: " . $e->getMessage());
+            // Сохраняем в базу данных
+            $stmt = $conn->prepare("INSERT INTO feedback (user_id, message) VALUES (?, ?)");
+            $stmt->bind_param("is", $user_id, $message);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            $feedback_error = 'Произошла ошибка при отправке сообщения.';
         }
     }
 }
