@@ -140,12 +140,12 @@ if (isset($_POST['send_feedback'])) {
             
             // Настройки сервера для Yandex
             $mail->isSMTP();
-            $mail->Host = 'smtp.yandex.ru';
+            $mail->Host = 'smtp-mail.outlook.com';
             $mail->SMTPAuth = true;
             $mail->Username = '21200172@live.preco.ru'; // Полный email
             $mail->Password = '7519356463'; // Пароль от почты ИЛИ пароль приложения
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-            $mail->Port = 465;
+            $mail->Port = 587;
             $mail->CharSet = 'UTF-8';
             
             // Отправитель должен совпадать с учётной записью
