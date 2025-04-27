@@ -142,7 +142,7 @@ if (isset($_POST['send_feedback'])) {
             $mail->SMTPAuth = true;
             $mail->Username = '21200172@live.preco.ru'; // Полный email
             $mail->Password = '7519356463'; // Пароль от почты ИЛИ пароль приложения
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port = 587;
             $mail->CharSet = 'UTF-8';
             
