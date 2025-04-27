@@ -1,4 +1,6 @@
 <?php
+$mail = new PHPMailer(true);
+$mail->isSendmail();
     // Усиленная защита сессии
     session_start([
         'cookie_lifetime' => 86400, // 1 день
