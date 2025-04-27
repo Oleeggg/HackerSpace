@@ -104,7 +104,7 @@
         }
     }
 
-    // Обработка формы обратной связи
+  // Обработка формы обратной связи
 $feedback_success = '';
 $feedback_error = '';
 if (isset($_POST['send_feedback'])) {
@@ -123,26 +123,27 @@ if (isset($_POST['send_feedback'])) {
         $user_email = $user['email'];
         $stmt->close();
         
-        // Отправка email (замените на реальный email)
+        // Отправка через mail()
         $to = "shuvalovv1444@gmail.com";
         $subject = "Обратная связь от пользователя HackerSpace";
-        $headers = "From: " . $user_email . "\r\n";
-        $headers .= "Reply-To: " . $user_email . "\r\n";
+        $headers = "From: no-reply@hackerspace.com\r\n";
+        $headers .= "Reply-To: $user_email\r\n";
         $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
         
-        $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n";
-        $email_body .= "Email: " . $user_email . "\n\n";
-        $email_body .= "Сообщение:\n" . $message . "\n";
+        $email_body = "Сообщение от пользователя: " . $_SESSION['user_name'] . "\n" .
+                     "Email: " . $user_email . "\n\n" .
+                     "Сообщение:\n" . $message;
         
         if (mail($to, $subject, $email_body, $headers)) {
             $feedback_success = 'Ваше сообщение успешно отправлено!';
-            // Можно также сохранить сообщение в базу данных
+            
+            // Сохраняем в базу данных
             $stmt = $conn->prepare("INSERT INTO feedback (user_id, message) VALUES (?, ?)");
             $stmt->bind_param("is", $user_id, $message);
             $stmt->execute();
             $stmt->close();
         } else {
-            $feedback_error = 'Произошла ошибка при отправке сообщения. Пожалуйста, попробуйте позже.';
+            $feedback_error = 'Произошла ошибка при отправке сообщения.';
         }
     }
 }
