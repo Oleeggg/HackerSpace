@@ -269,7 +269,7 @@ if (isset($_POST['send_feedback'])) {
         
         <div class="profile-dropdown" id="profileDropdown">
             <a href="#" id="profileModalBtn">Профиль</a>
-            <a href="settings.html">Настройки</a>
+            <a href="#" id="settingsModalBtn">Настройки</a>
             <a href="contact.html">Контакт с нами</a>
             <a href="?logout">Выйти из аккаунта</a>
         </div>
@@ -403,7 +403,131 @@ if (isset($_POST['send_feedback'])) {
         </div>
     </div>
     <?php endif; ?>
+    
+    <!-- Модальное окно настроек -->
+<div id="settingsModal" class="settings-modal">
+    <div class="settings-content">
+        <div class="settings-header">
+            <h2>Настройки</h2>
+            <span class="settings-close">&times;</span>
+        </div>
+        <div class="settings-body">
+            <div class="setting-option">
+                <h3>Язык</h3>
+                <select id="languageSelect" class="settings-select">
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="setting-option">
+                <h3>Тема</h3>
+                <div class="theme-options">
+                    <button id="lightTheme" class="theme-btn active">Светлая</button>
+                    <button id="darkTheme" class="theme-btn">Тёмная</button>
+                </div>
+            </div>
+        </div>
+        <div class="settings-footer">
+            <button id="saveSettings" class="save-btn">Сохранить</button>
+        </div>
+    </div>
+</div>
 
+    <script>
+                // Обработка кнопки "Настройки"
+        document.querySelector('a[href="settings.html"]')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('profileDropdown').classList.remove('show');
+            openSettingsModal();
+        });
+
+        // Функция открытия модального окна настроек
+        function openSettingsModal() {
+            // Загружаем сохраненные настройки
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const savedLanguage = localStorage.getItem('language') || 'ru';
+            
+            // Устанавливаем текущие значения
+            document.getElementById('languageSelect').value = savedLanguage;
+            
+            const lightBtn = document.getElementById('lightTheme');
+            const darkBtn = document.getElementById('darkTheme');
+            
+            lightBtn.classList.remove('active');
+            darkBtn.classList.remove('active');
+            
+            if (savedTheme === 'light') {
+                lightBtn.classList.add('active');
+            } else {
+                darkBtn.classList.add('active');
+            }
+            
+            document.getElementById('settingsModal').style.display = 'block';
+            document.getElementById('overlay').classList.add('show');
+        }
+
+        // Закрытие модального окна настроек
+        document.querySelector('.settings-close')?.addEventListener('click', function() {
+            document.getElementById('settingsModal').style.display = 'none';
+            document.getElementById('overlay').classList.remove('show');
+        });
+
+        // Обработка выбора темы
+        document.getElementById('lightTheme')?.addEventListener('click', function() {
+            document.getElementById('lightTheme').classList.add('active');
+            document.getElementById('darkTheme').classList.remove('active');
+        });
+
+        document.getElementById('darkTheme')?.addEventListener('click', function() {
+            document.getElementById('darkTheme').classList.add('active');
+            document.getElementById('lightTheme').classList.remove('active');
+        });
+
+        // Сохранение настроек
+        document.getElementById('saveSettings')?.addEventListener('click', function() {
+            const selectedTheme = document.getElementById('lightTheme').classList.contains('active') ? 'light' : 'dark';
+            const selectedLanguage = document.getElementById('languageSelect').value;
+            
+            // Сохраняем в localStorage
+            localStorage.setItem('theme', selectedTheme);
+            localStorage.setItem('language', selectedLanguage);
+            
+            // Применяем настройки
+            applySettings();
+            
+            // Закрываем модальное окно
+            document.getElementById('settingsModal').style.display = 'none';
+            document.getElementById('overlay').classList.remove('show');
+        });
+
+        // Применение сохраненных настроек при загрузке страницы
+        function applySettings() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const savedLanguage = localStorage.getItem('language') || 'ru';
+            
+            // Применяем тему
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+            }
+            
+            // Здесь можно добавить логику для смены языка
+            // Например, загрузку другого языкового файла или AJAX-запрос
+            console.log('Selected language:', savedLanguage);
+        }
+
+        // Инициализация настроек при загрузке страницы
+        window.addEventListener('DOMContentLoaded', function() {
+            applySettings();
+        });
+
+        // Закрытие при клике на overlay
+        document.getElementById('overlay')?.addEventListener('click', function() {
+            document.getElementById('settingsModal').style.display = 'none';
+            this.classList.remove('show');
+        });
+    </script>
     <script>
         // Обработка клика по профилю
         document.getElementById('profileBtn')?.addEventListener('click', function() {
