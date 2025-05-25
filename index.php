@@ -228,7 +228,7 @@ if (isset($_POST['send_feedback'])) {
 <body>
     <header>
         <img class="img_logo" src="">
-        <a class="for_developers" href="HackerSpaceForDevelopers.html">Для разработчиков</a>
+        <a class="for_developers" href="HackerSpaceForDevelopers.php">Для разработчиков</a>
         <div class="buttons_up">
             <?php if (!$logged_in): ?>
                 <button id="openLoginModalBtn" class="reg_button">Войти</button>
