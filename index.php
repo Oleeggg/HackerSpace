@@ -359,7 +359,7 @@ if (isset($_POST['send_feedback'])) {
                 <span class="feedback-close">&times;</span>
             </div>
             <form class="feedback-form" method="POST" action="">
-                <textarea name="feedback_message" placeholder="Напишите ваше сообщение здесь..." required></textarea>
+                <textarea name="feedback_message" placeholder="Возникли проблемы? Опишите их здесь!" required></textarea>
                 <button type="submit" name="send_feedback">Отправить</button>
                 <div class="feedback-success" <?php if (!empty($feedback_success)) echo 'style="display: block;"'; ?>>
                     <?php echo $feedback_success; ?>
