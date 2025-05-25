@@ -89,7 +89,6 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <header>
         <img class="img_logo" src="">
         <a class="for_developers" href="index.php">На Главную</a>
-        <a class="help" href="">Помощь по продукту</a>
         <div class="buttons">
             <?php if (!$logged_in): ?>
             <?php else: ?>
