@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,6 +84,54 @@
     </div>
 
     <script src="js/regmodelwindow.js"></script>
+    <script>
+        // Обработка клика по профилю
+        document.getElementById('profileBtn')?.addEventListener('click', function() {
+            document.getElementById('profileDropdown').classList.toggle('show');
+        });
+        
+        // Закрытие меню при клике вне его
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
+                var dropdown = document.getElementById('profileDropdown');
+                if (dropdown?.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            }
+        });
 
+        // Обработка модального окна профиля
+        document.getElementById('profileModalBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('profileDropdown').classList.remove('show');
+            document.getElementById('profileModal').style.display = 'block';
+        });
+        
+        document.querySelector('.profile-modal-close')?.addEventListener('click', function() {
+            document.getElementById('profileModal').style.display = 'none';
+        });
+        
+        // Закрытие модального окна профиля при клике вне его
+        window.addEventListener('click', function(event) {
+            if (event.target === document.getElementById('profileModal')) {
+                document.getElementById('profileModal').style.display = 'none';
+            }
+        });
+
+        // Обработка кнопки удаления аккаунта
+        document.querySelector('.delete-btn')?.addEventListener('click', function() {
+            document.getElementById('confirmDeleteModal').style.display = 'block';
+        });
+        
+        // Обработка кнопки отмены удаления
+        document.getElementById('confirmNo')?.addEventListener('click', function() {
+            document.getElementById('confirmDeleteModal').style.display = 'none';
+        });
+        
+        // Обработка кнопки выхода
+        document.querySelector('.logout-btn')?.addEventListener('click', function() {
+            window.location.href = '?logout';
+        });
+    </script>
 </body>
 </html>
