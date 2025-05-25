@@ -13,7 +13,6 @@
         <img class="img_logo" src="">
         <a class="for_developers" href="index.php">На Главную</a>
         <div class="buttons">
-            <a id="openModalBtn" class="reg_button">Зарегистрироваться</a>
             <a href="HackerSpacePageBot.php" class="demo_button">Запросить демо</a>
         </div>
     </header>
