@@ -435,7 +435,7 @@ if (isset($_POST['send_feedback'])) {
     <script>
        // Функция открытия модального окна настроек
 function openSettingsModal() {
-    document.getElementById('settingsModal').style.display = 'flex';
+    document.getElementById('settingsModalBtn').style.display = 'flex';
 }
 
 // Закрытие модального окна настроек
