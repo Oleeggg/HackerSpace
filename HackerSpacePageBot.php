@@ -83,6 +83,10 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <title>HackerSpaceWorkPage</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/PageBot.css">
+    <!-- Подключение CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <!-- Подключение темы CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css">
 </head>
 <body>
     <header>
@@ -159,17 +163,16 @@ if (isset($_POST['delete_account']) && $logged_in) {
             </div>
         </div>
         <div class="container2">
-            <div class="code-editor">
-                <h3>Напишите ваш код</h3>
-                <textarea id="codeEditor" placeholder="Введите ваш код..."></textarea>
-                <button id="sendCode">Отправить ответ</button>
-            </div>
-            <div class="response-container">
-                <h3>Ответ нейросети</h3>
-                <div id="response"></div>
-            </div>
-        </div>
+    <div class="code-editor">
+        <h3>Напишите ваш код</h3>
+        <textarea id="codeEditor" placeholder="Введите ваш код..."></textarea>
+        <button id="sendCode">Отправить ответ</button>
     </div>
+    <div class="response-container">
+        <h3>Ответ нейросети</h3>
+        <div id="response"></div>
+    </div>
+</div>
 
     <script>
         // Обработка клика по профилю
@@ -261,6 +264,39 @@ document.getElementById('sendCode').addEventListener('click', function() {
         console.error('Error:', error);
     });
 });
+    </script>
+    <!-- Подключение CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <!-- Подключение режима для JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script>
+        // Инициализация CodeMirror
+        var editor = CodeMirror(document.getElementById('codeEditor'), {
+            mode: 'javascript',
+            theme: 'dracula',
+            lineNumbers: true,
+            indentUnit: 4,
+            lineWrapping: true
+        });
+
+        // Обработка отправки кода
+        document.getElementById('sendCode').addEventListener('click', function() {
+            const code = editor.getValue();
+            fetch('/api/code.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code: code }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('response').innerText = data.response;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
     </script>
 </body>
 </html>
