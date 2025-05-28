@@ -24,6 +24,11 @@ class OpenRouterClient {
         $context  = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
 
+        if ($result === FALSE) {
+            error_log("Failed to call API: " . print_r(error_get_last(), true));
+            return ['error' => 'Failed to call API'];
+        }
+
         return json_decode($result, true);
     }
 
@@ -44,6 +49,11 @@ class OpenRouterClient {
 
         $context  = stream_context_create($options);
         $result = file_get_contents($url, false, $context);
+
+        if ($result === FALSE) {
+            error_log("Failed to call API: " . print_r(error_get_last(), true));
+            return ['error' => 'Failed to call API'];
+        }
 
         return json_decode($result, true);
     }

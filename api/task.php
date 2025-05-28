@@ -10,7 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($data['task'])) {
         $response = $client->generateTask($data['task']);
-        echo json_encode(['response' => $response]);
+        if (isset($response['error'])) {
+            error_log("API Error: " . $response['error']);
+            echo json_encode(['error' => $response['error']]);
+        } else {
+            echo json_encode(['response' => $response]);
+        }
     }
 }
 ?>
