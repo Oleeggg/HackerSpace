@@ -15,7 +15,7 @@ class OpenRouterClient {
 
         $options = [
             'http' => [
-                'header'  => "Content-type: application/json\r\nAuthorization: Bearer " . $this->apiKey . "\r\n",
+                'header'  => "Content-type: application/json\r\nAuthorization: Bearer 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'" . $this->apiKey . "\r\n",
                 'method'  => 'POST',
                 'content' => json_encode($data),
             ],
@@ -41,7 +41,7 @@ class OpenRouterClient {
 
         $options = [
             'http' => [
-                'header'  => "Content-type: application/json\r\nAuthorization: Bearer " . $this->apiKey . "\r\n",
+                'header'  => "Content-type: application/json\r\nAuthorization: Bearer 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'" . $this->apiKey . "\r\n",
                 'method'  => 'POST',
                 'content' => json_encode($data),
             ],
