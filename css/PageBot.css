@@ -36,7 +36,7 @@ header {
     font-size: 20px;
 }
 
-.for_developers:visited { 
+.for_developers:visited {
     color: black;
 }
 
@@ -49,7 +49,7 @@ header {
     font-size: 20px;
 }
 
-.help:visited { 
+.help:visited {
     color: black;
 }
 
@@ -361,112 +361,34 @@ header {
     background-color: #ff9800;
     color: white;
 }
-.container2 {
-    display: none;
+
+/* Стили для новых элементов */
+.task-request, .code-editor, .response-container {
     padding: 20px;
-    max-width: 900px;
-    margin: 0 auto;
 }
 
-.generation-controls {
-    margin-bottom: 30px;
-}
-
-#promptInput {
+.task-request textarea, .code-editor textarea {
     width: 100%;
-    min-height: 120px;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
-    margin-bottom: 15px;
-    resize: vertical;
+    height: 100px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
-.settings-panel {
-    background: #f5f5f5;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 15px;
-}
-
-.settings-panel label {
-    margin-right: 10px;
-    font-weight: bold;
-}
-
-.button_generate {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-
-.button_generate:hover {
-    background-color: #45a049;
-}
-
-.generation-results {
-    margin-top: 30px;
-}
-
-.loading-indicator {
-    text-align: center;
-    padding: 20px;
-}
-
-.spinner {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #3498db;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.generated-content {
-    background: #f9f9f9;
-    border-left: 4px solid #3498db;
-    padding: 15px;
-    margin-bottom: 15px;
-    border-radius: 0 8px 8px 0;
-}
-
-.generation-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.copy-btn, .regenerate-btn {
-    padding: 8px 16px;
+.task-request button, .code-editor button {
+    padding: 10px 20px;
     border: none;
     border-radius: 4px;
+    background-color: #4CAF50;
+    color: white;
     cursor: pointer;
 }
 
-.copy-btn {
-    background-color: #2196F3;
-    color: white;
-}
-
-.regenerate-btn {
-    background-color: #ff9800;
-    color: white;
-}
-
-.error-message {
-    color: #f44336;
-    padding: 15px;
-    background: #ffebee;
-    border-radius: 8px;
+.response-container {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
 }

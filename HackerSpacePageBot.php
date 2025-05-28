@@ -32,33 +32,6 @@ if ($conn->connect_error) {
     die("Ошибка подключения: " . $conn->connect_error);
 }
 
-function call_devstral_api($prompt) {
-    $api_url = 'https://api.devstral.ai/small/free'; // Уточните точный URL API
-    
-    $data = [
-        'prompt' => $prompt,
-        'max_tokens' => 500,
-        'temperature' => 0.7
-    ];
-    
-    $options = [
-        'http' => [
-            'header'  => "Content-type: application/json\r\n",
-            'method'  => 'POST',
-            'content' => json_encode($data),
-        ],
-    ];
-    
-    $context  = stream_context_create($options);
-    $result = file_get_contents($api_url, false, $context);
-    
-    if ($result === FALSE) {
-        return false;
-    }
-    
-    return json_decode($result, true);
-}
-
 // Проверка авторизации
 $logged_in = false;
 if (isset($_SESSION['user_id'])) {
@@ -109,7 +82,6 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <meta charset="UTF-8">
     <title>HackerSpaceWorkPage</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="reset.css">
     <link rel="stylesheet" type="text/css" href="css/PageBot.css">
 </head>
 <body>
@@ -141,7 +113,7 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 <h2>Профиль</h2>
                 <span class="profile-modal-close">&times;</span>
             </div>
-            
+
             <div class="profile-section">
                 <table class="profile-info">
                     <tr>
@@ -180,155 +152,115 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <div class="main">
         <div class="container1">
             <button class="button_start" type="submit">Начать генерацию!</button>
+            <div class="task-request">
+                <h3>Запрос задания</h3>
+                <textarea id="taskRequest" placeholder="Введите ваш запрос..."></textarea>
+                <button id="sendTaskRequest">Отправить запрос</button>
+            </div>
         </div>
         <div class="container2">
-        <div class="generation-controls">
-        <textarea id="promptInput" placeholder="Введите ваш запрос для генерации..."></textarea>
-        <div class="settings-panel">
-            <label for="creativity">Креативность:</label>
-            <input type="range" id="creativity" min="0.1" max="1.0" step="0.1" value="0.7">
-            <span id="creativityValue">0.7</span>
-            
-            <label for="length">Длина ответа:</label>
-            <select id="length">
-                <option value="200">Короткий</option>
-                <option value="500" selected>Средний</option>
-                <option value="1000">Длинный</option>
-            </select>
+            <div class="code-editor">
+                <h3>Напишите ваш код</h3>
+                <textarea id="codeEditor" placeholder="Введите ваш код..."></textarea>
+                <button id="sendCode">Отправить ответ</button>
+            </div>
+            <div class="response-container">
+                <h3>Ответ нейросети</h3>
+                <div id="response"></div>
+            </div>
         </div>
-        <button id="generateBtn" class="button_generate">Сгенерировать</button>
     </div>
-    
-    <div class="generation-results">
-        <div class="loading-indicator" id="loadingIndicator" style="display: none;">
-            <div class="spinner"></div>
-            <p>Devstral Small обрабатывает ваш запрос...</p>
-        </div>
-        <div class="result-container" id="resultContainer"></div>
-    </div>
-</div>
 
     <script>
         // Обработка клика по профилю
-        document.getElementById('profileBtn')?.addEventListener('click', function() {
-            document.getElementById('profileDropdown').classList.toggle('show');
-        });
-        
-        // Закрытие меню при клике вне его
-        window.addEventListener('click', function(event) {
-            if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
-                var dropdown = document.getElementById('profileDropdown');
-                if (dropdown?.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                }
-            }
-        });
+document.getElementById('profileBtn')?.addEventListener('click', function() {
+    document.getElementById('profileDropdown').classList.toggle('show');
+});
 
-        // Обработка модального окна профиля
-        document.getElementById('profileModalBtn')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('profileDropdown').classList.remove('show');
-            document.getElementById('profileModal').style.display = 'block';
-        });
-        
-        document.querySelector('.profile-modal-close')?.addEventListener('click', function() {
-            document.getElementById('profileModal').style.display = 'none';
-        });
-        
-        // Закрытие модального окна профиля при клике вне его
-        window.addEventListener('click', function(event) {
-            if (event.target === document.getElementById('profileModal')) {
-                document.getElementById('profileModal').style.display = 'none';
-            }
-        });
-
-        // Обработка кнопки удаления аккаунта
-        document.querySelector('.delete-btn')?.addEventListener('click', function() {
-            document.getElementById('confirmDeleteModal').style.display = 'block';
-        });
-        
-        // Обработка кнопки отмены удаления
-        document.getElementById('confirmNo')?.addEventListener('click', function() {
-            document.getElementById('confirmDeleteModal').style.display = 'none';
-        });
-        
-        // Обработка кнопки выхода
-        document.querySelector('.logout-btn')?.addEventListener('click', function() {
-            window.location.href = '?logout';
-        });
-    </script>
-    <script> 
-    document.addEventListener('DOMContentLoaded', function() {
-    // Обработка кнопки "Начать генерацию!"
-    document.querySelector('.button_start').addEventListener('click', function() {
-        document.querySelector('.container1').style.display = 'none';
-        document.querySelector('.container2').style.display = 'block';
-    });
-    
-    // Обновление значения креативности
-    document.getElementById('creativity').addEventListener('input', function() {
-        document.getElementById('creativityValue').textContent = this.value;
-    });
-    
-    // Обработка генерации
-    document.getElementById('generateBtn').addEventListener('click', function() {
-        const prompt = document.getElementById('promptInput').value.trim();
-        if (!prompt) {
-            alert('Пожалуйста, введите запрос для генерации');
-            return;
+// Закрытие меню при клике вне его
+window.addEventListener('click', function(event) {
+    if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
+        var dropdown = document.getElementById('profileDropdown');
+        if (dropdown?.classList.contains('show')) {
+            dropdown.classList.remove('show');
         }
-        
-        const creativity = parseFloat(document.getElementById('creativity').value);
-        const maxTokens = parseInt(document.getElementById('length').value);
-        
-        // Показываем индикатор загрузки
-        document.getElementById('loadingIndicator').style.display = 'block';
-        document.getElementById('resultContainer').innerHTML = '';
-        
-        // Отправка запроса на сервер
-        fetch('generate.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                creativity: creativity,
-                max_tokens: maxTokens
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('loadingIndicator').style.display = 'none';
-            if (data.success) {
-                document.getElementById('resultContainer').innerHTML = 
-                    `<div class="generated-content">${data.result}</div>
-                     <div class="generation-actions">
-                        <button class="copy-btn">Копировать</button>
-                        <button class="regenerate-btn">Сгенерировать снова</button>
-                     </div>`;
-                
-                // Добавляем обработчики для новых кнопок
-                document.querySelector('.copy-btn').addEventListener('click', function() {
-                    navigator.clipboard.writeText(data.result);
-                    alert('Текст скопирован в буфер обмена!');
-                });
-                
-                document.querySelector('.regenerate-btn').addEventListener('click', function() {
-                    document.getElementById('generateBtn').click();
-                });
-            } else {
-                document.getElementById('resultContainer').innerHTML = 
-                    `<div class="error-message">Ошибка: ${data.error}</div>`;
-            }
-        })
-        .catch(error => {
-            document.getElementById('loadingIndicator').style.display = 'none';
-            document.getElementById('resultContainer').innerHTML = 
-                `<div class="error-message">Ошибка соединения: ${error.message}</div>`;
-        });
+    }
+});
+
+// Обработка модального окна профиля
+document.getElementById('profileModalBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('profileDropdown').classList.remove('show');
+    document.getElementById('profileModal').style.display = 'block';
+});
+
+document.querySelector('.profile-modal-close')?.addEventListener('click', function() {
+    document.getElementById('profileModal').style.display = 'none';
+});
+
+// Закрытие модального окна профиля при клике вне его
+window.addEventListener('click', function(event) {
+    if (event.target === document.getElementById('profileModal')) {
+        document.getElementById('profileModal').style.display = 'none';
+    }
+});
+
+// Обработка кнопки удаления аккаунта
+document.querySelector('.delete-btn')?.addEventListener('click', function() {
+    document.getElementById('confirmDeleteModal').style.display = 'block';
+});
+
+// Обработка кнопки отмены удаления
+document.getElementById('confirmNo')?.addEventListener('click', function() {
+    document.getElementById('confirmDeleteModal').style.display = 'none';
+});
+
+// Обработка кнопки выхода
+document.querySelector('.logout-btn')?.addEventListener('click', function() {
+    window.location.href = '?logout';
+});
+
+// Обработка отправки запроса задания
+document.getElementById('sendTaskRequest').addEventListener('click', function() {
+    const taskRequest = document.getElementById('taskRequest').value;
+    fetch('https://openrouter.ai/api/v1/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer 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'
+        },
+        body: JSON.stringify({
+            model: 'mistralai/devstral-small:free',
+            prompt: taskRequest
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('response').innerText = data.response;
+    })
+    .catch((error) => {
+        console.error('Error:', error);
     });
-});   
+});
+
+// Обработка отправки кода
+document.getElementById('sendCode').addEventListener('click', function() {
+    const code = document.getElementById('codeEditor').value;
+    fetch('/api/code.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: code }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('response').innerText = data.response;
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+});
     </script>
 </body>
 </html>
