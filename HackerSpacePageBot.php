@@ -291,25 +291,6 @@ document.getElementById('sendCode').addEventListener('click', function() {
             indentUnit: 4,
             lineWrapping: true
         });
-
-        // Обработка отправки кода
-        document.getElementById('sendCode').addEventListener('click', function() {
-            const code = editor.getValue();
-            fetch('/api/code.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ code: code }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('response').innerText = data.response;
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        });
     </script>
 </body>
 </html>
