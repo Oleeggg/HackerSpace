@@ -230,7 +230,7 @@ document.getElementById('sendTaskRequest').addEventListener('click', function() 
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer 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'
+            'Authorization': 'Bearer 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'
         },
         body: JSON.stringify({
             model: 'mistralai/devstral-small:free',
