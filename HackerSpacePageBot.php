@@ -226,7 +226,7 @@ document.querySelector('.logout-btn')?.addEventListener('click', function() {
 // Обработка отправки запроса задания
 document.getElementById('sendTaskRequest').addEventListener('click', function() {
     const taskRequest = document.getElementById('taskRequest').value;
-    fetch('https://openrouter.ai/api/v1/generate', {
+    fetch('https://openrouter.ai/api/v1', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -234,7 +234,12 @@ document.getElementById('sendTaskRequest').addEventListener('click', function() 
         },
         body: JSON.stringify({
             model: 'mistralai/devstral-small:free',
-            prompt: taskRequest
+            "messages": [
+      {
+        "role": "user",
+        "content": "What is the meaning of life?"
+      }
+    ]
         }),
     })
     .then(response => response.json())
