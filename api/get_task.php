@@ -20,7 +20,7 @@ function makeApiRequestWithRetry($messages, $maxRetries = 2) {
             ];
 
             $data = [
-                'model' => 'mistralai/mistral-7b-instruct:free',
+                'model' => 'mistralai/devstral-small:free',
                 'messages' => $messages,
                 'temperature' => 0.7,
                 'max_tokens' => 1500,
