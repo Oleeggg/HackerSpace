@@ -1,7 +1,7 @@
 <?php
 
 // Настройки OpenRouter API
-define('OPENROUTER_API_KEY', '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');
+define('OPENROUTER_API_KEY', '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');
 define('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions');
 define('DEVSTRAL_MODEL', 'mistralai/devstral-small:free');
 
