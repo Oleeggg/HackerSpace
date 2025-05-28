@@ -20,7 +20,10 @@ session_start([
 ]);
 
 // Настройки подключения к базе данных
-$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+define('DB_HOST', 'mysql');
+define('DB_USER', 'mysite');
+define('DB_PASS', 'Ovmj1yvFil6QEl');
+define('DB_NAME', 'mysite');
 
 // Проверяем подключение
 if ($conn->connect_error) {
