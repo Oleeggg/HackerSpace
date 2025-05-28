@@ -3,7 +3,7 @@ require_once('../vendor/autoload.php');
 
 use OpenRouter\OpenRouterClient;
 
-$client = new OpenRouterClient('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');
+$client = new OpenRouterClient('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');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
