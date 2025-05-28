@@ -15,7 +15,7 @@ class OpenRouterClient {
 
         $options = [
             'http' => [
-                'header'  => "Content-type: application/json \r\n Authorization: Bearer " . $this->apiKey . "\r\n",
+                'header'  => "Content-type: application/json\r\nAuthorization: Bearer " . $this->apiKey . "\r\n",
                 'method'  => 'POST',
                 'content' => json_encode($data),
             ],
