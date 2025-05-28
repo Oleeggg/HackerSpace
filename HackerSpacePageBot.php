@@ -413,7 +413,8 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 </div>
             `;
         }
-
+        </script>
+        <script>
         // Обработка клика по профилю
         document.getElementById('profileBtn')?.addEventListener('click', function() {
             document.getElementById('profileDropdown').classList.toggle('show');
