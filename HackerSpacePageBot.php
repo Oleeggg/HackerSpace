@@ -1,8 +1,8 @@
 <?php
-
 require_once('phpmailer/src/PHPMailer.php');
 require_once('phpmailer/src/SMTP.php');
 require_once('phpmailer/src/Exception.php');
+require_once('config.php'); // Файл с конфигурацией
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
@@ -10,6 +10,7 @@ use PHPMailer\PHPMailer\Exception;
 
 $mail = new PHPMailer(true);
 $mail->CharSet = 'utf-8';
+
 // Усиленная защита сессии
 session_start([
     'cookie_lifetime' => 86400,
@@ -19,13 +20,10 @@ session_start([
 ]);
 
 // Настройки подключения к базе данных
-    $db_host = 'mysql';
-    $db_user = 'mysite'; 
-    $db_pass = 'Ovmj1yvFil6QEl';     
-    $db_name = 'mysite';
-
-// Создаем подключение
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+define('DB_HOST', 'mysql');
+define('DB_USER', 'mysite');
+define('DB_PASS', 'Ovmj1yvFil6QEl');
+define('DB_NAME', 'mysite');
 
 // Проверяем подключение
 if ($conn->connect_error) {
@@ -416,21 +414,6 @@ if (isset($_POST['delete_account']) && $logged_in) {
 
         // Обработка клика по профилю
         document.getElementById('profileBtn')?.addEventListener('click', function() {
-            document.getElementById('profileDropdown').classList.toggle('show');
-        });
-        
-        // Закрытие меню при клике вне его
-        window.addEventListener('click', function(event) {
-            if (!event.target.matches('#profileBtn') && !event.target.closest('.profile-dropdown')) {
-                var dropdown = document.getElementById('profileDropdown');
-                if (dropdown?.classList.contains('show')) {
-                    dropdown.classList.remove('show');
-                }
-            }
-        });
-
-    // Обработка клика по профилю
-    document.getElementById('profileBtn')?.addEventListener('click', function() {
             document.getElementById('profileDropdown').classList.toggle('show');
         });
         
