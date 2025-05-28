@@ -1,9 +1,4 @@
 <?php
-// Настройки базы данных
-define('DB_HOST', 'mysql');
-define('DB_USER', 'mysite');
-define('DB_PASS', 'Ovmj1yvFil6QEl');
-define('DB_NAME', 'mysite');
 
 // Настройки OpenRouter API
 define('OPENROUTER_API_KEY', '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');
@@ -14,3 +9,4 @@ define('DEVSTRAL_MODEL', 'mistralai/devstral-small:free');
 header('Content-Security-Policy: default-src \'self\' https://cdnjs.cloudflare.com https://openrouter.ai');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
+?>
