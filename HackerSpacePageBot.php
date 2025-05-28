@@ -255,7 +255,7 @@ document.getElementById('sendTaskRequest').addEventListener('click', function() 
 
 // Обработка отправки кода
 document.getElementById('sendCode').addEventListener('click', function() {
-    const code = document.getElementById('codeEditor').value;
+    const code = editor.getValue();
     fetch('/api/code.php', {
         method: 'POST',
         headers: {
@@ -263,12 +263,18 @@ document.getElementById('sendCode').addEventListener('click', function() {
         },
         body: JSON.stringify({ code: code }),
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         document.getElementById('response').innerText = data.response;
     })
     .catch((error) => {
         console.error('Error:', error);
+        document.getElementById('response').innerText = 'Error: ' + error.message;
     });
 });
     </script>
