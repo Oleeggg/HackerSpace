@@ -226,7 +226,7 @@ document.querySelector('.logout-btn')?.addEventListener('click', function() {
 // Обработка отправки запроса задания
 document.getElementById('sendTaskRequest').addEventListener('click', function() {
     const taskRequest = document.getElementById('taskRequest').value;
-    fetch('https://openrouter.ai/api/v1/chat/completions', {
+    fetch('http://hackerspace74.ru/api/code.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
