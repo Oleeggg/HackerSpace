@@ -133,3 +133,4 @@ try {
     ]);
     error_log("Error: " . $e->getMessage() . "\nInput: " . json_encode($input) . "\nResponse: " . ($response['body'] ?? ''));
 }
+?>
