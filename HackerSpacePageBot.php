@@ -32,6 +32,33 @@ if ($conn->connect_error) {
     die("Ошибка подключения: " . $conn->connect_error);
 }
 
+function call_devstral_api($prompt) {
+    $api_url = 'https://api.devstral.ai/small/free'; // Уточните точный URL API
+    
+    $data = [
+        'prompt' => $prompt,
+        'max_tokens' => 500,
+        'temperature' => 0.7
+    ];
+    
+    $options = [
+        'http' => [
+            'header'  => "Content-type: application/json\r\n",
+            'method'  => 'POST',
+            'content' => json_encode($data),
+        ],
+    ];
+    
+    $context  = stream_context_create($options);
+    $result = file_get_contents($api_url, false, $context);
+    
+    if ($result === FALSE) {
+        return false;
+    }
+    
+    return json_decode($result, true);
+}
+
 // Проверка авторизации
 $logged_in = false;
 if (isset($_SESSION['user_id'])) {
@@ -84,47 +111,6 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="reset.css">
     <link rel="stylesheet" type="text/css" href="css/PageBot.css">
-    <style>
-        /* Добавленные стили */
-        .code-editor {
-            width: 100%;
-            height: 300px;
-            font-family: monospace;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background: #f8f8f8;
-            margin-bottom: 15px;
-        }
-        .progress-container {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f0f0f0;
-            border-radius: 5px;
-        }
-        .progress-bar {
-            height: 20px;
-            background: #e0e0e0;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: #4CAF50;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        .progress-message {
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-        .error-message {
-            color: #f44336;
-        }
-        .success-message {
-            color: #4CAF50;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -193,37 +179,34 @@ if (isset($_POST['delete_account']) && $logged_in) {
 
     <div class="main">
         <div class="container1">
-            <h2>Получить задание от нейросети</h2>
-            <div class="task-controls">
-                <select id="taskDifficulty">
-                    <option value="easy">Легкое</option>
-                    <option value="medium" selected>Среднее</option>
-                    <option value="hard">Сложное</option>
-                </select>
-                <select id="taskLanguage">
-                    <option value="python">Python</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="php">PHP</option>
-                </select>
-                <button class="button_start" id="getTaskBtn">Получить задание</button>
-            </div>
-            <div class="task-description" id="taskDescription"></div>
+            <button class="button_start" type="submit">Начать генерацию!</button>
         </div>
-        <div class="container2" style="display:none;">
-            <h2>Решите задание</h2>
-            <div class="task-title" id="currentTaskTitle"></div>
-            <textarea class="code-editor" id="codeEditor" placeholder="Напишите здесь ваш код..."></textarea>
-            <button class="button_submit" id="submitCodeBtn">Отправить ответ</button>
+        <div class="container2">
+        <div class="generation-controls">
+        <textarea id="promptInput" placeholder="Введите ваш запрос для генерации..."></textarea>
+        <div class="settings-panel">
+            <label for="creativity">Креативность:</label>
+            <input type="range" id="creativity" min="0.1" max="1.0" step="0.1" value="0.7">
+            <span id="creativityValue">0.7</span>
             
-            <div class="progress-container" id="progressContainer" style="display:none;">
-                <h3>Прогресс проверки:</h3>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill"></div>
-                </div>
-                <div class="progress-message" id="progressMessage"></div>
-            </div>
+            <label for="length">Длина ответа:</label>
+            <select id="length">
+                <option value="200">Короткий</option>
+                <option value="500" selected>Средний</option>
+                <option value="1000">Длинный</option>
+            </select>
         </div>
+        <button id="generateBtn" class="button_generate">Сгенерировать</button>
     </div>
+    
+    <div class="generation-results">
+        <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>Devstral Small обрабатывает ваш запрос...</p>
+        </div>
+        <div class="result-container" id="resultContainer"></div>
+    </div>
+</div>
 
     <script>
         // Обработка клика по профилю
@@ -274,123 +257,78 @@ if (isset($_POST['delete_account']) && $logged_in) {
             window.location.href = '?logout';
         });
     </script>
-     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            let currentTask = null;
-            
-            // Получение задания от нейросети
-            document.getElementById('getTaskBtn').addEventListener('click', function() {
-                const difficulty = document.getElementById('taskDifficulty').value;
-                const language = document.getElementById('taskLanguage').value;
+    <script> 
+    document.addEventListener('DOMContentLoaded', function() {
+    // Обработка кнопки "Начать генерацию!"
+    document.querySelector('.button_start').addEventListener('click', function() {
+        document.querySelector('.container1').style.display = 'none';
+        document.querySelector('.container2').style.display = 'block';
+    });
+    
+    // Обновление значения креативности
+    document.getElementById('creativity').addEventListener('input', function() {
+        document.getElementById('creativityValue').textContent = this.value;
+    });
+    
+    // Обработка генерации
+    document.getElementById('generateBtn').addEventListener('click', function() {
+        const prompt = document.getElementById('promptInput').value.trim();
+        if (!prompt) {
+            alert('Пожалуйста, введите запрос для генерации');
+            return;
+        }
+        
+        const creativity = parseFloat(document.getElementById('creativity').value);
+        const maxTokens = parseInt(document.getElementById('length').value);
+        
+        // Показываем индикатор загрузки
+        document.getElementById('loadingIndicator').style.display = 'block';
+        document.getElementById('resultContainer').innerHTML = '';
+        
+        // Отправка запроса на сервер
+        fetch('generate.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                creativity: creativity,
+                max_tokens: maxTokens
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            if (data.success) {
+                document.getElementById('resultContainer').innerHTML = 
+                    `<div class="generated-content">${data.result}</div>
+                     <div class="generation-actions">
+                        <button class="copy-btn">Копировать</button>
+                        <button class="regenerate-btn">Сгенерировать снова</button>
+                     </div>`;
                 
-                document.getElementById('taskDescription').innerHTML = '<p>Загрузка задания...</p>';
-                
-                // Эмуляция запроса к нейросети (в реальности будет fetch)
-                setTimeout(() => {
-                    // Здесь должен быть реальный запрос к API нейросети
-                    // Для примера используем mock-данные
-                    const tasks = {
-                        easy: {
-                            python: {
-                                title: "Простая задача: Сумма чисел",
-                                description: "Напишите функцию sum(a, b), которая возвращает сумму двух чисел."
-                            },
-                            javascript: {
-                                title: "Простая задача: Конкатенация строк",
-                                description: "Напишите функцию concat(str1, str2), которая объединяет две строки."
-                            },
-                            php: {
-                                title: "Простая задача: Массив в строку",
-                                description: "Напишите функцию arrayToString($arr), которая преобразует массив в строку через запятую."
-                            }
-                        },
-                        medium: {
-                            python: {
-                                title: "Средняя задача: Фильтрация списка",
-                                description: "Напишите функцию filter_list(lst), которая принимает список и возвращает новый список, содержащий только числа."
-                            },
-                            javascript: {
-                                title: "Средняя задача: Уникальные элементы",
-                                description: "Напишите функцию getUnique(arr), которая возвращает массив уникальных элементов."
-                            },
-                            php: {
-                                title: "Средняя задача: Поиск простых чисел",
-                                description: "Напишите функцию findPrimes($n), которая возвращает массив всех простых чисел до n."
-                            }
-                        },
-                        hard: {
-                            python: {
-                                title: "Сложная задача: Бинарное дерево",
-                                description: "Реализуйте класс BinaryTree с методами вставки, поиска и удаления узлов."
-                            },
-                            javascript: {
-                                title: "Сложная задача: Promise.all",
-                                description: "Реализуйте свою версию функции Promise.all()."
-                            },
-                            php: {
-                                title: "Сложная задача: MVC роутер",
-                                description: "Реализуйте простой MVC роутер, который обрабатывает URL и вызывает соответствующие контроллеры."
-                            }
-                        }
-                    };
-                    
-                    currentTask = tasks[difficulty][language];
-                    document.getElementById('taskDescription').innerHTML = `
-                        <h3>${currentTask.title}</h3>
-                        <p>${currentTask.description}</p>
-                        <button id="startSolvingBtn">Начать решение</button>
-                    `;
-                    
-                    document.getElementById('startSolvingBtn').addEventListener('click', function() {
-                        document.querySelector('.container1').style.display = 'none';
-                        document.querySelector('.container2').style.display = 'block';
-                        document.getElementById('currentTaskTitle').textContent = currentTask.title;
-                    });
-                }, 1000);
-            });
-            
-            // Отправка кода на проверку
-            document.getElementById('submitCodeBtn').addEventListener('click', function() {
-                const code = document.getElementById('codeEditor').value.trim();
-                if (!code) {
-                    alert('Пожалуйста, напишите код перед отправкой');
-                    return;
-                }
-                
-                const progressContainer = document.getElementById('progressContainer');
-                const progressFill = document.getElementById('progressFill');
-                const progressMessage = document.getElementById('progressMessage');
-                
-                progressContainer.style.display = 'block';
-                progressFill.style.width = '0%';
-                progressMessage.innerHTML = '';
-                
-                // Эмуляция процесса проверки нейросетью
-                simulateCodeCheck(progressFill, progressMessage);
-            });
-            
-            function simulateCodeCheck(progressFill, progressMessage) {
-                const steps = [
-                    {progress: 10, message: "🔍 Анализ синтаксиса..."},
-                    {progress: 30, message: "✅ Синтаксис корректен\n🔍 Проверка структуры кода..."},
-                    {progress: 50, message: "🔍 Запуск тестов..."},
-                    {progress: 70, message: "✅ 3/5 тестов пройдено\n🔍 Анализ производительности..."},
-                    {progress: 90, message: "🔍 Проверка стиля кода..."},
-                    {progress: 100, message: "🎉 Задание выполнено!\n✅ Все тесты пройдены\n✔ Код соответствует стандартам"}
-                ];
-                
-                steps.forEach((step, index) => {
-                    setTimeout(() => {
-                        progressFill.style.width = step.progress + '%';
-                        progressMessage.innerHTML = step.message;
-                        
-                        if (step.progress === 100) {
-                            progressMessage.classList.add('success-message');
-                        }
-                    }, index * 1500);
+                // Добавляем обработчики для новых кнопок
+                document.querySelector('.copy-btn').addEventListener('click', function() {
+                    navigator.clipboard.writeText(data.result);
+                    alert('Текст скопирован в буфер обмена!');
                 });
+                
+                document.querySelector('.regenerate-btn').addEventListener('click', function() {
+                    document.getElementById('generateBtn').click();
+                });
+            } else {
+                document.getElementById('resultContainer').innerHTML = 
+                    `<div class="error-message">Ошибка: ${data.error}</div>`;
             }
+        })
+        .catch(error => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('resultContainer').innerHTML = 
+                `<div class="error-message">Ошибка соединения: ${error.message}</div>`;
         });
+    });
+});   
     </script>
 </body>
 </html>
