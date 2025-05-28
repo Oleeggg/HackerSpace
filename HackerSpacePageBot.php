@@ -227,30 +227,31 @@ document.querySelector('.logout-btn')?.addEventListener('click', function() {
 document.getElementById('sendTaskRequest').addEventListener('click', function() {
     const taskRequest = document.getElementById('taskRequest').value;
     fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer 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'
-        },
-        body: JSON.stringify({
-            model: 'mistralai/devstral-small:free',
-            prompt: taskRequest
-        }),
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Response from server:', data); // Логирование ответа
-        document.getElementById('response').innerText = data.response;
-    })
-    .catch((error) => {
-        console.error('Error:', error);
-        document.getElementById('response').innerText = 'Error: ' + error.message;
-    });
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer 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'
+    },
+    body: JSON.stringify({
+        model: 'mistralai/devstral-small:free',
+        prompt: taskRequest
+    }),
+})
+.then(response => {
+    if (!response.ok) {
+        return response.text().then(text => {
+            throw new Error(`Network response was not ok: ${text}`);
+        });
+    }
+    return response.json();
+})
+.then(data => {
+    console.log('Response from server:', data); // Логирование ответа
+    document.getElementById('response').innerText = data.response;
+})
+.catch((error) => {
+    console.error('Error:', error);
+    document.getElementById('response').innerText = 'Error: ' + error.message;
 });
 
 // Обработка отправки кода
