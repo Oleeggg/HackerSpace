@@ -84,6 +84,47 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="reset.css">
     <link rel="stylesheet" type="text/css" href="css/PageBot.css">
+    <style>
+        /* Добавленные стили */
+        .code-editor {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f8f8f8;
+            margin-bottom: 15px;
+        }
+        .progress-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .progress-bar {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-message {
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error-message {
+            color: #f44336;
+        }
+        .success-message {
+            color: #4CAF50;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -152,10 +193,35 @@ if (isset($_POST['delete_account']) && $logged_in) {
 
     <div class="main">
         <div class="container1">
-            <button class="button_start" type="submit">Начать генерацию!</button>
+            <h2>Получить задание от нейросети</h2>
+            <div class="task-controls">
+                <select id="taskDifficulty">
+                    <option value="easy">Легкое</option>
+                    <option value="medium" selected>Среднее</option>
+                    <option value="hard">Сложное</option>
+                </select>
+                <select id="taskLanguage">
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="php">PHP</option>
+                </select>
+                <button class="button_start" id="getTaskBtn">Получить задание</button>
+            </div>
+            <div class="task-description" id="taskDescription"></div>
         </div>
-        <div class="container2">
-
+        <div class="container2" style="display:none;">
+            <h2>Решите задание</h2>
+            <div class="task-title" id="currentTaskTitle"></div>
+            <textarea class="code-editor" id="codeEditor" placeholder="Напишите здесь ваш код..."></textarea>
+            <button class="button_submit" id="submitCodeBtn">Отправить ответ</button>
+            
+            <div class="progress-container" id="progressContainer" style="display:none;">
+                <h3>Прогресс проверки:</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-message" id="progressMessage"></div>
+            </div>
         </div>
     </div>
 
@@ -206,6 +272,124 @@ if (isset($_POST['delete_account']) && $logged_in) {
         // Обработка кнопки выхода
         document.querySelector('.logout-btn')?.addEventListener('click', function() {
             window.location.href = '?logout';
+        });
+    </script>
+     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let currentTask = null;
+            
+            // Получение задания от нейросети
+            document.getElementById('getTaskBtn').addEventListener('click', function() {
+                const difficulty = document.getElementById('taskDifficulty').value;
+                const language = document.getElementById('taskLanguage').value;
+                
+                document.getElementById('taskDescription').innerHTML = '<p>Загрузка задания...</p>';
+                
+                // Эмуляция запроса к нейросети (в реальности будет fetch)
+                setTimeout(() => {
+                    // Здесь должен быть реальный запрос к API нейросети
+                    // Для примера используем mock-данные
+                    const tasks = {
+                        easy: {
+                            python: {
+                                title: "Простая задача: Сумма чисел",
+                                description: "Напишите функцию sum(a, b), которая возвращает сумму двух чисел."
+                            },
+                            javascript: {
+                                title: "Простая задача: Конкатенация строк",
+                                description: "Напишите функцию concat(str1, str2), которая объединяет две строки."
+                            },
+                            php: {
+                                title: "Простая задача: Массив в строку",
+                                description: "Напишите функцию arrayToString($arr), которая преобразует массив в строку через запятую."
+                            }
+                        },
+                        medium: {
+                            python: {
+                                title: "Средняя задача: Фильтрация списка",
+                                description: "Напишите функцию filter_list(lst), которая принимает список и возвращает новый список, содержащий только числа."
+                            },
+                            javascript: {
+                                title: "Средняя задача: Уникальные элементы",
+                                description: "Напишите функцию getUnique(arr), которая возвращает массив уникальных элементов."
+                            },
+                            php: {
+                                title: "Средняя задача: Поиск простых чисел",
+                                description: "Напишите функцию findPrimes($n), которая возвращает массив всех простых чисел до n."
+                            }
+                        },
+                        hard: {
+                            python: {
+                                title: "Сложная задача: Бинарное дерево",
+                                description: "Реализуйте класс BinaryTree с методами вставки, поиска и удаления узлов."
+                            },
+                            javascript: {
+                                title: "Сложная задача: Promise.all",
+                                description: "Реализуйте свою версию функции Promise.all()."
+                            },
+                            php: {
+                                title: "Сложная задача: MVC роутер",
+                                description: "Реализуйте простой MVC роутер, который обрабатывает URL и вызывает соответствующие контроллеры."
+                            }
+                        }
+                    };
+                    
+                    currentTask = tasks[difficulty][language];
+                    document.getElementById('taskDescription').innerHTML = `
+                        <h3>${currentTask.title}</h3>
+                        <p>${currentTask.description}</p>
+                        <button id="startSolvingBtn">Начать решение</button>
+                    `;
+                    
+                    document.getElementById('startSolvingBtn').addEventListener('click', function() {
+                        document.querySelector('.container1').style.display = 'none';
+                        document.querySelector('.container2').style.display = 'block';
+                        document.getElementById('currentTaskTitle').textContent = currentTask.title;
+                    });
+                }, 1000);
+            });
+            
+            // Отправка кода на проверку
+            document.getElementById('submitCodeBtn').addEventListener('click', function() {
+                const code = document.getElementById('codeEditor').value.trim();
+                if (!code) {
+                    alert('Пожалуйста, напишите код перед отправкой');
+                    return;
+                }
+                
+                const progressContainer = document.getElementById('progressContainer');
+                const progressFill = document.getElementById('progressFill');
+                const progressMessage = document.getElementById('progressMessage');
+                
+                progressContainer.style.display = 'block';
+                progressFill.style.width = '0%';
+                progressMessage.innerHTML = '';
+                
+                // Эмуляция процесса проверки нейросетью
+                simulateCodeCheck(progressFill, progressMessage);
+            });
+            
+            function simulateCodeCheck(progressFill, progressMessage) {
+                const steps = [
+                    {progress: 10, message: "🔍 Анализ синтаксиса..."},
+                    {progress: 30, message: "✅ Синтаксис корректен\n🔍 Проверка структуры кода..."},
+                    {progress: 50, message: "🔍 Запуск тестов..."},
+                    {progress: 70, message: "✅ 3/5 тестов пройдено\n🔍 Анализ производительности..."},
+                    {progress: 90, message: "🔍 Проверка стиля кода..."},
+                    {progress: 100, message: "🎉 Задание выполнено!\n✅ Все тесты пройдены\n✔ Код соответствует стандартам"}
+                ];
+                
+                steps.forEach((step, index) => {
+                    setTimeout(() => {
+                        progressFill.style.width = step.progress + '%';
+                        progressMessage.innerHTML = step.message;
+                        
+                        if (step.progress === 100) {
+                            progressMessage.classList.add('success-message');
+                        }
+                    }, index * 1500);
+                });
+            }
         });
     </script>
 </body>
