@@ -365,6 +365,7 @@ header {
 /* Стили для новых элементов */
 .task-request, .code-editor, .response-container {
     padding: 20px;
+    border: 1px solid #ccc;
 }
 
 .task-request textarea, .code-editor textarea {
