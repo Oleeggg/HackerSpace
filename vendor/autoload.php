@@ -7,9 +7,9 @@ class OpenRouterClient {
     }
 
     public function generateTask($task) {
-        $url = 'https://openrouter.ai/api/v1/generate';
+        $url = 'https://openrouter.ai/api/v1';
         $data = [
-            'model' => 'devstral-small-free',
+            'model' => 'mistralai/devstral-small:free',
             'prompt' => $task,
         ];
 
@@ -35,7 +35,7 @@ class OpenRouterClient {
     public function checkCode($code) {
         $url = 'https://openrouter.ai/api/v1/check';
         $data = [
-            'model' => 'devstral-small-free',
+            'model' => 'mistralai/devstral-small:free',
             'code' => $code,
         ];
 
