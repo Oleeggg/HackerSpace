@@ -267,3 +267,4 @@ try {
     echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     logError("Ошибка: " . $e->getMessage() . "\nТрассировка: " . $e->getTraceAsString());
 }
+?>
