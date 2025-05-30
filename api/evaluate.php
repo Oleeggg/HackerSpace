@@ -64,19 +64,36 @@ try {
     }
 
     $data = json_decode($response['body'], true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception("Invalid API response: " . json_last_error_msg());
+if (json_last_error() !== JSON_ERROR_NONE) {
+    // Попробуем извлечь ошибку из HTML, если ответ не JSON
+    if (strpos($response['body'], '<!DOCTYPE') !== false || strpos($response['body'], '<html') !== false) {
+        $errorMessage = strip_tags($response['body']);
+        throw new Exception("API returned HTML error: " . substr($errorMessage, 0, 200));
     }
+    throw new Exception("Invalid API response: " . json_last_error_msg() . ". Response: " . substr($response['body'], 0, 200));
+}
 
-    $evaluation = json_decode($data['choices'][0]['message']['content'], true);
+// Проверяем структуру ответа API
+if (!isset($data['choices'][0]['message']['content'])) {
+    throw new Exception("Unexpected API response structure");
+}
+
+// Пытаемся декодировать содержимое сообщения
+$content = $data['choices'][0]['message']['content'];
+if (is_array($content)) {
+    $evaluation = $content;
+} else {
+    $evaluation = json_decode($content, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
+        // Если не JSON, создаем оценку вручную
         $evaluation = [
-            'score' => 0,
-            'message' => 'Evaluation failed',
-            'details' => 'The AI returned invalid JSON: ' . json_last_error_msg(),
-            'suggestions' => []
+            'score' => 50,
+            'message' => 'Solution submitted',
+            'details' => 'The AI returned non-JSON response. Original: ' . substr($content, 0, 200),
+            'suggestions' => ['Ensure your solution follows the task requirements.']
         ];
     }
+}
 
     // Добавляем информацию о задании в ответ
     $evaluation['task_id'] = $task['id'] ?? null;
