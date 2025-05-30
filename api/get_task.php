@@ -81,7 +81,7 @@ function parseApiResponse(string $responseBody): array {
     // Проверка обязательных полей в задании
     $requiredFields = ['title', 'description'];
     foreach ($requiredFields as $field) {
-        if (!isset($decodedContent[$field]) {
+        if (!isset($decodedContent[$field])) {
             throw new RuntimeException("Missing required field in task: $field");
         }
     }
