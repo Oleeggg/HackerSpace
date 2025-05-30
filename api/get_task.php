@@ -23,18 +23,20 @@ function logError(string $message): void {
 }
 
 function getCacheKey(array $input): string {
-    return md5($input['language'] . $input['difficulty']);
+    $hour = (int)(time() / 3600) % TASK_VARIATIONS;
+    return md5($input['language'] . $input['difficulty'] . $hour);
 }
 
 function getCachedTask(string $key): ?array {
     global $cacheDir;
     $cacheFile = $cacheDir . '/' . $key . '.json';
     
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 86400)) { // Кэш на 24 часа
-        $content = file_get_contents($cacheFile);
-        if ($content !== false) {
-            return json_decode($content, true);
+    if (file_exists($cacheFile)) {
+        $data = json_decode(file_get_contents($cacheFile), true);
+        if (time() - ($data['generated_at'] ?? 0) < CACHE_EXPIRE) {
+            return $data;
         }
+        unlink($cacheFile);
     }
     
     return null;
@@ -42,6 +44,7 @@ function getCachedTask(string $key): ?array {
 
 function cacheTask(string $key, array $task): void {
     global $cacheDir;
+    $task['generated_at'] = time();
     $cacheFile = $cacheDir . '/' . $key . '.json';
     file_put_contents($cacheFile, json_encode($task));
 }
@@ -71,7 +74,6 @@ function validateInput(array $input): array {
 }
 
 function parseApiResponse(string $responseBody): array {
-    // Проверка на HTML ошибки
     if (strpos($responseBody, '<!DOCTYPE') !== false || strpos($responseBody, '<html') !== false) {
         $dom = new DOMDocument();
         @$dom->loadHTML($responseBody);
@@ -94,11 +96,9 @@ function parseApiResponse(string $responseBody): array {
     }
 
     $content = $data['choices'][0]['message']['content'];
-    
-    // Попробуем сначала как строку JSON
     $decodedContent = json_decode($content, true);
+    
     if (json_last_error() !== JSON_ERROR_NONE) {
-        // Если не JSON, возможно это строка с JSON внутри
         if (preg_match('/\{.*\}/s', $content, $matches)) {
             $decodedContent = json_decode($matches[0], true);
         }
@@ -108,7 +108,6 @@ function parseApiResponse(string $responseBody): array {
         }
     }
 
-    // Проверка обязательных полей в задании
     $requiredFields = ['title', 'description'];
     foreach ($requiredFields as $field) {
         if (!isset($decodedContent[$field])) {
@@ -141,8 +140,6 @@ function makeApiRequest(array $data): array {
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    // Разделяем заголовки и тело ответа
     $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     $headers = substr($response, 0, $headerSize);
     $body = substr($response, $headerSize);
@@ -174,10 +171,44 @@ function getDefaultCode(string $language): string {
 }
 
 function getFallbackTask(array $input): array {
+    $tasks = [
+        'javascript' => [
+            'beginner' => [
+                [
+                    'title' => 'Sum of two numbers',
+                    'description' => 'Write a function that takes two numbers and returns their sum.',
+                    'example' => 'function sum(a, b) { return a + b; }',
+                    'initialCode' => 'function sum(a, b) {\n  // Your code here\n}'
+                ],
+                [
+                    'title' => 'Find maximum',
+                    'description' => 'Write a function that finds the maximum of two numbers.',
+                    'example' => 'function max(a, b) { return a > b ? a : b; }',
+                    'initialCode' => 'function max(a, b) {\n  // Your code here\n}'
+                ]
+            ],
+            'intermediate' => [
+                // Добавьте больше вариаций
+            ]
+        ],
+        // Добавьте другие языки
+    ];
+
+    $hour = (int)(time() / 3600) % TASK_VARIATIONS;
+    $availableTasks = $tasks[$input['language']][$input['difficulty']] ?? [];
+    
+    if (!empty($availableTasks)) {
+        $taskIndex = $hour % count($availableTasks);
+        return array_merge($availableTasks[$taskIndex], [
+            'difficulty' => $input['difficulty'],
+            'language' => $input['language']
+        ]);
+    }
+
     return [
-        'title' => 'Sample Task (Rate Limited)',
-        'description' => 'Please wait before requesting new tasks. Here\'s a sample task: Implement a function that adds two numbers.',
-        'example' => 'function add(a, b) { return a + b; }',
+        'title' => 'Sample Task',
+        'description' => 'Implement a function that solves the problem.',
+        'example' => 'function solution() {}',
         'initialCode' => getDefaultCode($input['language']),
         'difficulty' => $input['difficulty'],
         'language' => $input['language']
@@ -185,18 +216,15 @@ function getFallbackTask(array $input): array {
 }
 
 try {
-    // Проверка AJAX запроса
     if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
         throw new RuntimeException('Direct access not allowed');
     }
 
-    // Проверка метода запроса
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         throw new RuntimeException('Only POST method allowed');
     }
 
-    // Получение и проверка входных данных
     $jsonInput = file_get_contents('php://input');
     if ($jsonInput === false) {
         throw new RuntimeException('Failed to read input data');
@@ -210,7 +238,6 @@ try {
     $validatedInput = validateInput($input);
     $cacheKey = getCacheKey($validatedInput);
     
-    // Проверяем кэш
     $cachedTask = getCachedTask($cacheKey);
     if ($cachedTask) {
         echo json_encode([
@@ -221,40 +248,42 @@ try {
         exit;
     }
 
-    // Формирование промпта
+    $hour = (int)(time() / 3600) % TASK_VARIATIONS;
     $prompt = <<<PROMPT
-    Generate a programming task with:
-    - Language: {$validatedInput['language']}
-    - Difficulty: {$validatedInput['difficulty']}
-    
-    Return STRICT JSON format with these fields:
-    {
-        "title": "Task title",
-        "description": "Detailed description",
-        "example": "Code example",
-        "initialCode": "Starter code",
-        "difficulty": "{$validatedInput['difficulty']}",
-        "language": "{$validatedInput['language']}"
-    }
-    PROMPT;
+Generate a unique programming task with:
+- Language: {$validatedInput['language']}
+- Difficulty: {$validatedInput['difficulty']}
+- Variation: {$hour}
+
+The task should be creative and not a common textbook example. Return STRICT JSON format with:
+{
+    "title": "Unique task title",
+    "description": "Detailed description with specific requirements",
+    "example": "Code example solving the task",
+    "initialCode": "Starter code with TODOs",
+    "difficulty": "{$validatedInput['difficulty']}",
+    "language": "{$validatedInput['language']}"
+}
+PROMPT;
 
     $apiResponse = makeApiRequest([
         'model' => DEVSTRAL_MODEL,
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a programming task generator. Always respond with valid JSON.'
+                'content' => 'You are a creative programming task generator. Generate unique tasks based on time variation.'
             ],
             [
                 'role' => 'user',
                 'content' => $prompt
             ]
         ],
-        'temperature' => 0.7,
-        'response_format' => ['type' => 'json_object']
+        'temperature' => 0.9,
+        'top_p' => 0.9,
+        'response_format' => ['type' => 'json_object'],
+        'seed' => $hour
     ]);
 
-    // Обработка ошибки 429 (Rate Limit Exceeded)
     if ($apiResponse['code'] === 429) {
         $fallbackTask = getFallbackTask($validatedInput);
         cacheTask($cacheKey, $fallbackTask);
@@ -274,26 +303,22 @@ try {
 
     $content = parseApiResponse($apiResponse['body']);
 
-    // Формирование задачи для ответа
     $task = [
         'title' => $content['title'] ?? 'Programming Task',
         'description' => $content['description'] ?? '',
         'example' => $content['example'] ?? '',
         'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
         'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
-        'language' => $content['language'] ?? $validatedInput['language']
+        'language' => $content['language'] ?? $validatedInput['language'],
+        'generated_at' => time()
     ];
 
-    // Кэшируем задачу
     cacheTask($cacheKey, $task);
 
-    // Формирование ответа
-    $response = [
+    echo json_encode([
         'success' => true,
         'task' => $task
-    ];
-
-    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
 } catch (InvalidArgumentException $e) {
     http_response_code(400);
