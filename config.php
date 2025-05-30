@@ -1,6 +1,4 @@
 <?php
-// Режим отладки
-define('DEBUG_MODE', true);
 
 // Настройки OpenRouter API
 define('OPENROUTER_API_KEY', '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');
