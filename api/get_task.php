@@ -12,8 +12,38 @@ ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/api_errors.log');
 ini_set('display_errors', 0);
 
+// Настройка кэширования
+$cacheDir = __DIR__ . '/../cache';
+if (!file_exists($cacheDir)) {
+    mkdir($cacheDir, 0755, true);
+}
+
 function logError(string $message): void {
     error_log(date('[Y-m-d H:i:s] ') . $message);
+}
+
+function getCacheKey(array $input): string {
+    return md5($input['language'] . $input['difficulty']);
+}
+
+function getCachedTask(string $key): ?array {
+    global $cacheDir;
+    $cacheFile = $cacheDir . '/' . $key . '.json';
+    
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 86400)) { // Кэш на 24 часа
+        $content = file_get_contents($cacheFile);
+        if ($content !== false) {
+            return json_decode($content, true);
+        }
+    }
+    
+    return null;
+}
+
+function cacheTask(string $key, array $task): void {
+    global $cacheDir;
+    $cacheFile = $cacheDir . '/' . $key . '.json';
+    file_put_contents($cacheFile, json_encode($task));
 }
 
 function validateInput(array $input): array {
@@ -89,6 +119,71 @@ function parseApiResponse(string $responseBody): array {
     return $decodedContent;
 }
 
+function makeApiRequest(array $data): array {
+    $headers = [
+        'Authorization: Bearer ' . OPENROUTER_API_KEY,
+        'Content-Type: application/json',
+        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+        'X-Title: HackerSpaceWorkPage'
+    ];
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => OPENROUTER_API_URL,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HEADER => true
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    // Разделяем заголовки и тело ответа
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headers = substr($response, 0, $headerSize);
+    $body = substr($response, $headerSize);
+    
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        throw new RuntimeException("CURL Error: $error");
+    }
+    
+    curl_close($ch);
+
+    return [
+        'code' => $httpCode,
+        'headers' => $headers,
+        'body' => $body
+    ];
+}
+
+function getDefaultCode(string $language): string {
+    $templates = [
+        'javascript' => '// Your code here\nfunction solution() {\n  // Implement your solution\n}',
+        'php' => "<?php\n// Your code here\nfunction solution() {\n  // Implement your solution\n}",
+        'python' => '# Your code here\ndef solution():\n    # Implement your solution',
+        'html' => '<!-- Your HTML here -->\n<div class="solution">\n  <!-- Implement your solution -->\n</div>'
+    ];
+    
+    return $templates[strtolower($language)] ?? '';
+}
+
+function getFallbackTask(array $input): array {
+    return [
+        'title' => 'Sample Task (Rate Limited)',
+        'description' => 'Please wait before requesting new tasks. Here\'s a sample task: Implement a function that adds two numbers.',
+        'example' => 'function add(a, b) { return a + b; }',
+        'initialCode' => getDefaultCode($input['language']),
+        'difficulty' => $input['difficulty'],
+        'language' => $input['language']
+    ];
+}
+
 try {
     // Проверка AJAX запроса
     if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
@@ -113,6 +208,18 @@ try {
     }
 
     $validatedInput = validateInput($input);
+    $cacheKey = getCacheKey($validatedInput);
+    
+    // Проверяем кэш
+    $cachedTask = getCachedTask($cacheKey);
+    if ($cachedTask) {
+        echo json_encode([
+            'success' => true,
+            'task' => $cachedTask,
+            'cached' => true
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
 
     // Формирование промпта
     $prompt = <<<PROMPT
@@ -147,23 +254,43 @@ try {
         'response_format' => ['type' => 'json_object']
     ]);
 
+    // Обработка ошибки 429 (Rate Limit Exceeded)
+    if ($apiResponse['code'] === 429) {
+        $fallbackTask = getFallbackTask($validatedInput);
+        cacheTask($cacheKey, $fallbackTask);
+        
+        echo json_encode([
+            'success' => true,
+            'task' => $fallbackTask,
+            'rate_limited' => true,
+            'message' => 'Rate limit exceeded. Using fallback task.'
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     if ($apiResponse['code'] !== 200) {
         throw new RuntimeException("API request failed with status {$apiResponse['code']}: " . substr(strip_tags($apiResponse['body']), 0, 100));
     }
 
     $content = parseApiResponse($apiResponse['body']);
 
+    // Формирование задачи для ответа
+    $task = [
+        'title' => $content['title'] ?? 'Programming Task',
+        'description' => $content['description'] ?? '',
+        'example' => $content['example'] ?? '',
+        'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
+        'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
+        'language' => $content['language'] ?? $validatedInput['language']
+    ];
+
+    // Кэшируем задачу
+    cacheTask($cacheKey, $task);
+
     // Формирование ответа
     $response = [
         'success' => true,
-        'task' => [
-            'title' => $content['title'] ?? 'Programming Task',
-            'description' => $content['description'] ?? '',
-            'example' => $content['example'] ?? '',
-            'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
-            'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
-            'language' => $content['language'] ?? $validatedInput['language']
-        ]
+        'task' => $task
     ];
 
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -187,55 +314,5 @@ try {
     
     echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     logError("Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
-}
-
-// Остальные функции (getDefaultCode, makeApiRequest) остаются без изменений
-
-function getDefaultCode(string $language): string {
-    $templates = [
-        'javascript' => '// Your code here\nfunction solution() {\n  // Implement your solution\n}',
-        'php' => "<?php\n// Your code here\nfunction solution() {\n  // Implement your solution\n}",
-        'python' => '# Your code here\ndef solution():\n    # Implement your solution',
-        'html' => '<!-- Your HTML here -->\n<div class="solution">\n  <!-- Implement your solution -->\n</div>'
-    ];
-    
-    return $templates[strtolower($language)] ?? '';
-}
-
-function makeApiRequest(array $data): array {
-    $headers = [
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        'Content-Type: application/json',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
-        'X-Title: HackerSpaceWorkPage'
-    ];
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => OPENROUTER_API_URL,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_TIMEOUT => 30,
-        CURLOPT_HEADER => false
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    if (curl_errno($ch)) {
-        $error = curl_error($ch);
-        curl_close($ch);
-        throw new RuntimeException("CURL Error: $error");
-    }
-    
-    curl_close($ch);
-
-    return [
-        'code' => $httpCode,
-        'body' => $response
-    ];
 }
 ?>
