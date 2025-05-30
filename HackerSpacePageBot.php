@@ -413,6 +413,69 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 </div>
             `;
         }
+        async function requestTask() {
+    const loadingIndicator = showLoading();
+    
+    try {
+        const response = await fetch('api/get_task.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                difficulty: document.getElementById('taskDifficulty').value,
+                language: document.getElementById('taskLanguage').value
+            })
+        });
+
+        const result = await handleResponse(response);
+        displayTask(result.task);
+        
+    } catch (error) {
+        showError(error.message);
+        console.error('Task request failed:', error);
+    } finally {
+        loadingIndicator.remove();
+    }
+}
+
+async function handleResponse(response) {
+    const text = await response.text();
+    
+    // Проверка на HTML ошибки
+    if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+        throw new Error('Server returned HTML page instead of JSON');
+    }
+
+    try {
+        const data = JSON.parse(text);
+        
+        if (!response.ok) {
+            const error = new Error(data.error || `HTTP error! status: ${response.status}`);
+            error.details = data.details;
+            throw error;
+        }
+        
+        return data;
+    } catch (e) {
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+    }
+}
+
+function showError(message) {
+    const taskDesc = document.getElementById('taskDescription');
+    taskDesc.innerHTML = `
+        <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h4>Ошибка при запросе задания</h4>
+            <p>${message}</p>
+            <button onclick="window.location.reload()">
+                <i class="fas fa-sync-alt"></i> Попробовать снова
+            </button>
+        </div>
+    `;
+}
         </script>
         <script>
         // Обработка клика по профилю
