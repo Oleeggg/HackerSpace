@@ -1,19 +1,24 @@
 <?php
 require_once(__DIR__ . '/../config.php');
 
-// Очистка буфера перед любым выводом
 while (ob_get_level()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 
 try {
     session_start();
     
-    // Проверка CSRF токена для безопасности
-    if (!isset($_SERVER['HTTP_X_CSRF_TOKEN']) || $_SERVER['HTTP_X_CSRF_TOKEN'] !== $_SESSION['csrf_token']) {
+    // Улучшенная проверка CSRF токена
+    if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || empty($_SESSION['csrf_token']) || 
+        !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
         throw new Exception('CSRF token validation failed');
     }
 
-    $input = json_decode(file_get_contents('php://input'), true);
+    $jsonInput = file_get_contents('php://input');
+    if ($jsonInput === false) {
+        throw new Exception('Failed to read input data');
+    }
+
+    $input = json_decode($jsonInput, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new Exception('Invalid JSON input: ' . json_last_error_msg());
     }
@@ -31,8 +36,15 @@ try {
     }
 
     $task = $_SESSION['current_task'];
-    $prompt = "Evaluate this solution strictly in JSON format with score (0-100), message, details, suggestions[]:\n\n" .
-              "Task: {$task['description']}\nLanguage: {$input['language']}\nSolution:\n{$input['solution']}";
+    $prompt = "Evaluate this solution strictly in JSON format with these fields:
+    - score (0-100)
+    - message
+    - details
+    - suggestions[]
+    
+    Task: {$task['description']}
+    Language: {$input['language']}
+    Solution:\n{$input['solution']}";
 
     $response = makeApiRequest([
         'model' => DEVSTRAL_MODEL,
@@ -46,6 +58,11 @@ try {
         throw new Exception("API request failed with HTTP code: " . $response['code']);
     }
 
+    // Проверка на HTML в ответе
+    if (strpos($response['body'], '<!DOCTYPE') !== false || strpos($response['body'], '<html') !== false) {
+        throw new Exception("API returned HTML instead of JSON");
+    }
+
     $data = json_decode($response['body'], true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         throw new Exception("Invalid API response: " . json_last_error_msg());
@@ -56,10 +73,14 @@ try {
         $evaluation = [
             'score' => 0,
             'message' => 'Evaluation failed',
-            'details' => 'The AI returned invalid JSON',
+            'details' => 'The AI returned invalid JSON: ' . json_last_error_msg(),
             'suggestions' => []
         ];
     }
+
+    // Добавляем информацию о задании в ответ
+    $evaluation['task_id'] = $task['id'] ?? null;
+    $evaluation['language'] = $input['language'];
 
     echo json_encode($evaluation, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
