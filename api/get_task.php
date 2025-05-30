@@ -102,3 +102,32 @@ try {
     ]);
     error_log("Error in get_task.php: " . $e->getMessage());
 }
+    // Проверяем структуру ответа
+    if (!isset($data['choices'][0]['message']['content'])) {
+        throw new Exception("Unexpected API response structure");
+    }
+
+    // Декодируем содержимое сообщения
+    $content = json_decode($data['choices'][0]['message']['content'], true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        // Если не JSON, создаем структуру вручную
+        $content = [
+            'title' => 'Programming Task',
+            'description' => $data['choices'][0]['message']['content'],
+            'example' => '',
+            'initialCode' => '',
+            'difficulty' => $input['difficulty'] ?? 'beginner'
+        ];
+    }
+
+    // Возвращаем результат
+    echo json_encode($content);
+
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => $e->getMessage(),
+        'details' => 'Check server logs for more information'
+    ]);
+    error_log("Error in get_task.php: " . $e->getMessage());
+}
