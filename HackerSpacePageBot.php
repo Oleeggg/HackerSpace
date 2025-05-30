@@ -218,99 +218,110 @@ if (isset($_POST['delete_account']) && $logged_in) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/comment/comment.min.js"></script>
     <script>
-        // Инициализация редактора кода (убрана дублирующая инициализация)
-    const codeEditor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
-        lineNumbers: true,
-        mode: 'javascript',
-        theme: 'dracula',
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        indentUnit: 4,
-        tabSize: 4,
-        extraKeys: {
-            'Ctrl-Enter': submitSolution,
-            'Cmd-Enter': submitSolution
-        }
-    });
+        // Инициализация редактора кода
+        const codeEditor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+            lineNumbers: true,
+            mode: 'javascript',
+            theme: 'dracula',
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            indentUnit: 4,
+            tabSize: 4,
+            extraKeys: {
+                'Ctrl-Enter': submitSolution,
+                'Cmd-Enter': submitSolution
+            }
+        });
 
-    // Улучшенная функция запроса задания
-    async function requestTask() {
-        const difficulty = document.getElementById('taskDifficulty').value;
-        const language = document.getElementById('taskLanguage').value;
+        // Обработчик изменения языка
+        document.getElementById('editorLanguage').addEventListener('change', function() {
+            const modeMap = {
+                'javascript': 'javascript',
+                'php': 'php',
+                'python': 'python',
+                'html': 'htmlmixed',
+                'css': 'css'
+            };
+            codeEditor.setOption('mode', modeMap[this.value]);
+        });
+
+        // Текущее задание
+        let currentTask = null;
+
+        // Запрос задания у нейросети
+document.getElementById('requestTaskBtn').addEventListener('click', async function() {
+    const difficulty = document.getElementById('taskDifficulty').value;
+    const language = document.getElementById('taskLanguage').value;
+    
+    const taskDescription = document.getElementById('taskDescription');
+    taskDescription.innerHTML = `
+        <div class="loading-indicator">
+            <div class="spinner"></div>
+            <p>Генерация задания...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('api/get_task.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                difficulty: difficulty,
+                language: language
+            })
+        });
         
-        const taskDescription = document.getElementById('taskDescription');
+        // Проверяем, что ответ JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(`Invalid response: ${text.substring(0, 100)}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Unknown error');
+        }
+        
+        currentTask = data.task;
+        
         taskDescription.innerHTML = `
-            <div class="loading-indicator">
-                <div class="spinner"></div>
-                <p>Генерация задания...</p>
+            <div class="task-header">
+                <h4>${currentTask.title}</h4>
+                <span class="difficulty-badge ${difficulty}">${currentTask.difficulty}</span>
+            </div>
+            <div class="task-content">
+                <p>${currentTask.description}</p>
+                ${currentTask.example ? `
+                <div class="task-example">
+                    <h5><i class="fas fa-lightbulb"></i> Пример:</h5>
+                    <pre>${currentTask.example}</pre>
+                </div>` : ''}
             </div>
         `;
         
-        try {
-            const response = await fetch('api/get_task.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    difficulty: difficulty,
-                    language: language
-                })
-            });
-
-            // Проверка типа контента
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
-                    throw new Error('Сервер вернул HTML вместо JSON. Возможно, ошибка сервера.');
-                }
-                throw new Error(`Неверный формат ответа: ${text.substring(0, 100)}`);
-            }
-
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || `Ошибка HTTP: ${response.status}`);
-            }
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Неизвестная ошибка');
-            }
-            
-            currentTask = data.task;
-            
-            taskDescription.innerHTML = `
-                <div class="task-header">
-                    <h4>${currentTask.title}</h4>
-                    <span class="difficulty-badge ${difficulty}">${currentTask.difficulty}</span>
-                </div>
-                <div class="task-content">
-                    <p>${currentTask.description}</p>
-                    ${currentTask.example ? `
-                    <div class="task-example">
-                        <h5><i class="fas fa-lightbulb"></i> Пример:</h5>
-                        <pre>${currentTask.example}</pre>
-                    </div>` : ''}
-                </div>
-            `;
-            
-            // Устанавливаем соответствующий язык в редакторе
-            document.getElementById('editorLanguage').value = language;
-            codeEditor.setOption('mode', language === 'html' ? 'htmlmixed' : language);
-            codeEditor.setValue(currentTask.initialCode || '');
-            
-        } catch (error) {
-            taskDescription.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Ошибка: ${error.message}</p>
-                    <button onclick="location.reload()">Попробовать снова</button>
-                </div>
-            `;
-            console.error('Ошибка:', error);
-        }
+        // Устанавливаем соответствующий язык в редакторе
+        document.getElementById('editorLanguage').value = language;
+        codeEditor.setOption('mode', language === 'html' ? 'htmlmixed' : language);
+        codeEditor.setValue(currentTask.initialCode || '');
+        
+    } catch (error) {
+        taskDescription.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Ошибка при получении задания: ${error.message}</p>
+                <button onclick="location.reload()">Попробовать снова</button>
+            </div>
+        `;
+        console.error('Ошибка:', error);
     }
 });
 
