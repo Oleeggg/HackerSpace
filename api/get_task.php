@@ -17,6 +17,11 @@ function logError(string $message): void {
 }
 
 try {
+    // Проверка, что запрос AJAX
+    if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
+        throw new RuntimeException('Direct access not allowed');
+    }
+
     // Валидация метода запроса
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
@@ -77,7 +82,12 @@ try {
 
     // Проверка ответа API
     if ($apiResponse['code'] !== 200) {
-        throw new RuntimeException("API request failed with status {$apiResponse['code']}: {$apiResponse['body']}");
+        throw new RuntimeException("API request failed with status {$apiResponse['code']}: " . substr(strip_tags($apiResponse['body']), 0, 100));
+    }
+
+    // Проверка на HTML в ответе
+    if (strpos($apiResponse['body'], '<!DOCTYPE') !== false || strpos($apiResponse['body'], '<html') !== false) {
+        throw new RuntimeException("API returned HTML instead of JSON");
     }
 
     $responseData = json_decode($apiResponse['body'], true);
@@ -128,43 +138,6 @@ try {
     logError("Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
 }
 
-function makeApiRequest(array $data): array {
-    $headers = [
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        'Content-Type: application/json',
-        'Accept: application/json',
-        'X-Title: HackerSpaceWorkPage',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
-    ];
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => OPENROUTER_API_URL,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 25,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_FAILONERROR => true
-    ]);
-
-    $response = curl_exec($ch);
-    
-    if (curl_errno($ch)) {
-        $error = curl_error($ch);
-        $errno = curl_errno($ch);
-        curl_close($ch);
-        throw new RuntimeException("CURL Error ($errno): $error");
-    }
-    
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    return ['code' => $httpCode, 'body' => $response];
-}
-
 function getDefaultCode(string $language): string {
     $templates = [
         'javascript' => '// Your code here\nfunction solution() {\n  // Implement your solution\n}',
@@ -198,6 +171,13 @@ function makeApiRequest(array $data): array {
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        throw new RuntimeException("CURL Error: $error");
+    }
+    
     curl_close($ch);
 
     return [
