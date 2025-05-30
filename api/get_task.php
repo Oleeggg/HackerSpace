@@ -23,7 +23,7 @@ function logError(string $message): void {
 }
 
 function getCacheKey(array $input): string {
-    $hour = (int)(time() / 3600) % TASK_VARIATIONS;
+    $hour = (int)(time() / 3) % TASK_VARIATIONS;
     return md5($input['language'] . $input['difficulty'] . $hour);
 }
 
