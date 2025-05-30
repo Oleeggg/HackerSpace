@@ -329,125 +329,78 @@ document.getElementById('requestTaskBtn').addEventListener('click', async functi
         document.getElementById('submitSolutionBtn').addEventListener('click', submitSolution);
 
         async function submitSolution() {
-    if (!currentTask) {
-        updateResult('Пожалуйста, сначала получите задание', 'error');
-        return;
-    }
-    
-    const solution = codeEditor.getValue();
-    const resultDiv = document.getElementById('executionResult');
-    resultDiv.innerHTML = `
-        <div class="loading-indicator">
-            <div class="spinner"></div>
-            <p>Проверка решения...</p>
-        </div>
-    `;
-    
-    try {
-        const response = await fetch('api/evaluate.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': '<?php echo $_SESSION['csrf_token'] ?? ''; ?>'
-            },
-            body: JSON.stringify({
-                task_id: currentTask.id || 'current',
-                solution: solution,
-                language: document.getElementById('editorLanguage').value
-            })
-        });
-
-        // Сначала получаем текст ответа для анализа
-        const responseText = await response.text();
-        
-        // Пытаемся распарсить JSON
-        let evaluation;
-        try {
-            evaluation = JSON.parse(responseText);
-        } catch (e) {
-            // Если не удалось распарсить, проверяем на HTML
-            if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html') || 
-                responseText.includes('<br />') || responseText.includes('<b>')) {
-                throw new Error(`Сервер вернул HTML ошибку: ${stripHtmlTags(responseText.substring(0, 200))}`);
-            } else {
-                throw new Error(`Неверный формат ответа: ${responseText.substring(0, 200)}`);
+            if (!currentTask) {
+                updateResult('Пожалуйста, сначала получите задание', 'error');
+                return;
             }
-        }
-
-        // Проверяем на наличие ошибки в JSON
-        if (!response.ok) {
-            throw new Error(evaluation.error || `Ошибка сервера: ${response.status}`);
-        }
-
-        // Отображаем результат
-        displayEvaluationResult(evaluation);
-        
-    } catch (error) {
-        resultDiv.innerHTML = `
-            <div class="error-message">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Ошибка при проверке решения: ${error.message}</p>
-                <button onclick="location.reload()">Попробовать снова</button>
-            </div>
-        `;
-        console.error('Ошибка:', error);
-    }
-}
-
-// Вспомогательная функция для удаления HTML тегов
-function stripHtmlTags(text) {
-    return text.replace(/<[^>]*>/g, '');
-}
-
-// Функция для отображения результата оценки
-function displayEvaluationResult(evaluation) {
-    const resultDiv = document.getElementById('executionResult');
-    
-    // Гарантируем наличие всех обязательных полей
-    evaluation = {
-        score: evaluation.score || 0,
-        message: evaluation.message || 'Нет сообщения оценки',
-        details: evaluation.details || 'Нет деталей оценки',
-        suggestions: evaluation.suggestions || [],
-        ...evaluation
-    };
-
-    let resultHTML = `
-        <div class="evaluation-result">
-            <div class="result-header">
-                <h4><i class="fas fa-clipboard-check"></i> Результат проверки</h4>
-                <div class="progress-circle" style="--progress: ${evaluation.score}">
-                    <span>${evaluation.score}%</span>
+            
+            const solution = codeEditor.getValue();
+            const resultDiv = document.getElementById('executionResult');
+            resultDiv.innerHTML = `
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <p>Проверка решения...</p>
                 </div>
-            </div>
-            <div class="result-message ${evaluation.score > 70 ? 'success' : 'warning'}">
-                <p>${evaluation.message}</p>
-            </div>
-    `;
-    
-    if (evaluation.details) {
-        resultHTML += `
-            <div class="result-details">
-                <h5><i class="fas fa-info-circle"></i> Детали:</h5>
-                <p>${evaluation.details}</p>
-            </div>
-        `;
-    }
-    
-    if (evaluation.suggestions && evaluation.suggestions.length > 0) {
-        resultHTML += `
-            <div class="result-suggestions">
-                <h5><i class="fas fa-lightbulb"></i> Рекомендации:</h5>
-                <ul>
-                    ${evaluation.suggestions.map(s => `<li>${s}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    resultHTML += `</div>`;
-    resultDiv.innerHTML = resultHTML;
-
+            `;
+            
+            try {
+                const response = await fetch('api/evaluate.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        task_id: currentTask.id || 'current',
+                        solution: solution,
+                        language: document.getElementById('editorLanguage').value
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const evaluation = await response.json();
+                
+                if (evaluation.error) {
+                    throw new Error(evaluation.error);
+                }
+                
+                let resultHTML = `
+                    <div class="evaluation-result">
+                        <div class="result-header">
+                            <h4><i class="fas fa-clipboard-check"></i> Результат проверки</h4>
+                            <div class="progress-circle" style="--progress: ${evaluation.score}">
+                                <span>${evaluation.score}%</span>
+                            </div>
+                        </div>
+                        <div class="result-message ${evaluation.score > 70 ? 'success' : 'warning'}">
+                            <p>${evaluation.message}</p>
+                        </div>
+                `;
+                
+                if (evaluation.details) {
+                    resultHTML += `
+                        <div class="result-details">
+                            <h5><i class="fas fa-info-circle"></i> Детали:</h5>
+                            <p>${evaluation.details}</p>
+                        </div>
+                    `;
+                }
+                
+                if (evaluation.suggestions && evaluation.suggestions.length > 0) {
+                    resultHTML += `
+                        <div class="result-suggestions">
+                            <h5><i class="fas fa-lightbulb"></i> Рекомендации:</h5>
+                            <ul>
+                                ${evaluation.suggestions.map(s => `<li>${s}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                resultHTML += `</div>`;
+                resultDiv.innerHTML = resultHTML;
                 
             } catch (error) {
                 resultDiv.innerHTML = `
