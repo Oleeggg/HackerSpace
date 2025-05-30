@@ -40,7 +40,18 @@ function validateInput(array $input): array {
     ];
 }
 
-function makeApiRequest(array $data): array {
+function makeApiRequest(array $data, int $retryCount = 0): array {
+    // Ограничение количества попыток
+    if ($retryCount > 3) {
+        throw new RuntimeException("Превышено максимальное количество попыток запроса");
+    }
+
+    // Задержка перед повторным запросом
+    if ($retryCount > 0) {
+        $delay = min(pow(2, $retryCount) + rand(1, 1000) / 1000, 10); // Экспоненциальная задержка
+        sleep($delay);
+    }
+
     $headers = [
         'Authorization: Bearer ' . OPENROUTER_API_KEY,
         'Content-Type: application/json',
@@ -74,6 +85,16 @@ function makeApiRequest(array $data): array {
     $body = substr($response, $headerSize);
     
     curl_close($ch);
+
+    // Обработка ошибки 429
+    if ($httpCode === 429) {
+        $retryAfter = 5; // Значение по умолчанию
+        if (preg_match('/retry-after:\s*(\d+)/i', $headers, $matches)) {
+            $retryAfter = (int)$matches[1];
+        }
+        sleep($retryAfter);
+        return makeApiRequest($data, $retryCount + 1);
+    }
 
     return [
         'code' => $httpCode,
