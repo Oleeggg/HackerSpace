@@ -6,7 +6,7 @@ define('DEBUG_MODE', true);
 if (ob_get_level()) ob_end_clean();
 
 // Проверка API ключа
-if (!defined('OPENROUTER_API_KEY') || empty(OPENROUTER_API_KEY) || OPENROUTER_API_KEY === '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') {
+if (!defined('OPENROUTER_API_KEY') || empty(OPENROUTER_API_KEY) || OPENROUTER_API_KEY === 'sk-or-v1-...') {
     die("Invalid API key configuration");
 }
 
