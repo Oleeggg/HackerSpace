@@ -20,18 +20,18 @@ function validateInput(array $input): array {
     $required = ['language', 'difficulty'];
     foreach ($required as $field) {
         if (empty($input[$field])) {
-            throw new InvalidArgumentException("Не указано обязательное поле: $field");
+            throw new InvalidArgumentException("Missing required field: $field");
         }
     }
 
     $allowedLanguages = ['javascript', 'php', 'python', 'html'];
     if (!in_array(strtolower($input['language']), $allowedLanguages)) {
-        throw new InvalidArgumentException("Указан недопустимый язык программирования");
+        throw new InvalidArgumentException("Invalid language specified");
     }
 
     $allowedDifficulties = ['beginner', 'intermediate', 'advanced'];
     if (!in_array(strtolower($input['difficulty']), $allowedDifficulties)) {
-        throw new InvalidArgumentException("Указан недопустимый уровень сложности");
+        throw new InvalidArgumentException("Invalid difficulty level");
     }
 
     return [
@@ -40,22 +40,173 @@ function validateInput(array $input): array {
     ];
 }
 
-function makeApiRequest(array $data, int $retryCount = 0): array {
-    // Ограничение количества попыток
-    if ($retryCount > 3) {
-        throw new RuntimeException("Превышено максимальное количество попыток запроса");
+function parseApiResponse(string $responseBody): array {
+    // Проверка на HTML ошибки
+    if (strpos($responseBody, '<!DOCTYPE') !== false || strpos($responseBody, '<html') !== false) {
+        $dom = new DOMDocument();
+        @$dom->loadHTML($responseBody);
+        $errorText = '';
+        
+        foreach ($dom->getElementsByTagName('p') as $p) {
+            $errorText .= $p->textContent . "\n";
+        }
+        
+        throw new RuntimeException("API returned HTML error: " . trim($errorText) ?: substr(strip_tags($responseBody), 0, 200));
     }
 
-    // Задержка перед повторным запросом
-    if ($retryCount > 0) {
-        $delay = min(pow(2, $retryCount) + rand(1, 1000) / 1000, 10); // Экспоненциальная задержка
-        sleep($delay);
+    $data = json_decode($responseBody, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new RuntimeException("Invalid API response JSON: " . json_last_error_msg());
     }
 
+    if (!isset($data['choices'][0]['message']['content'])) {
+        throw new RuntimeException("Unexpected API response structure");
+    }
+
+    $content = $data['choices'][0]['message']['content'];
+    
+    // Попробуем сначала как строку JSON
+    $decodedContent = json_decode($content, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        // Если не JSON, возможно это строка с JSON внутри
+        if (preg_match('/\{.*\}/s', $content, $matches)) {
+            $decodedContent = json_decode($matches[0], true);
+        }
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException("Invalid task content JSON: " . json_last_error_msg() . ". Content: " . substr($content, 0, 200));
+        }
+    }
+
+    // Проверка обязательных полей в задании
+    $requiredFields = ['title', 'description'];
+    foreach ($requiredFields as $field) {
+        if (!isset($decodedContent[$field]) {
+            throw new RuntimeException("Missing required field in task: $field");
+        }
+    }
+
+    return $decodedContent;
+}
+
+try {
+    // Проверка AJAX запроса
+    if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
+        throw new RuntimeException('Direct access not allowed');
+    }
+
+    // Проверка метода запроса
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        throw new RuntimeException('Only POST method allowed');
+    }
+
+    // Получение и проверка входных данных
+    $jsonInput = file_get_contents('php://input');
+    if ($jsonInput === false) {
+        throw new RuntimeException('Failed to read input data');
+    }
+
+    $input = json_decode($jsonInput, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new RuntimeException("Invalid JSON input: " . json_last_error_msg());
+    }
+
+    $validatedInput = validateInput($input);
+
+    // Формирование промпта
+    $prompt = <<<PROMPT
+    Generate a programming task with:
+    - Language: {$validatedInput['language']}
+    - Difficulty: {$validatedInput['difficulty']}
+    
+    Return STRICT JSON format with these fields:
+    {
+        "title": "Task title",
+        "description": "Detailed description",
+        "example": "Code example",
+        "initialCode": "Starter code",
+        "difficulty": "{$validatedInput['difficulty']}",
+        "language": "{$validatedInput['language']}"
+    }
+    PROMPT;
+
+    $apiResponse = makeApiRequest([
+        'model' => DEVSTRAL_MODEL,
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'You are a programming task generator. Always respond with valid JSON.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        'temperature' => 0.7,
+        'response_format' => ['type' => 'json_object']
+    ]);
+
+    if ($apiResponse['code'] !== 200) {
+        throw new RuntimeException("API request failed with status {$apiResponse['code']}: " . substr(strip_tags($apiResponse['body']), 0, 100));
+    }
+
+    $content = parseApiResponse($apiResponse['body']);
+
+    // Формирование ответа
+    $response = [
+        'success' => true,
+        'task' => [
+            'title' => $content['title'] ?? 'Programming Task',
+            'description' => $content['description'] ?? '',
+            'example' => $content['example'] ?? '',
+            'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
+            'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
+            'language' => $content['language'] ?? $validatedInput['language']
+        ]
+    ];
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+} catch (Exception $e) {
+    http_response_code(500);
+    $errorResponse = [
+        'success' => false,
+        'error' => $e->getMessage()
+    ];
+    
+    if (DEBUG_MODE) {
+        $errorResponse['trace'] = $e->getTraceAsString();
+    }
+    
+    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    logError("Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
+}
+
+// Остальные функции (getDefaultCode, makeApiRequest) остаются без изменений
+
+function getDefaultCode(string $language): string {
+    $templates = [
+        'javascript' => '// Your code here\nfunction solution() {\n  // Implement your solution\n}',
+        'php' => "<?php\n// Your code here\nfunction solution() {\n  // Implement your solution\n}",
+        'python' => '# Your code here\ndef solution():\n    # Implement your solution',
+        'html' => '<!-- Your HTML here -->\n<div class="solution">\n  <!-- Implement your solution -->\n</div>'
+    ];
+    
+    return $templates[strtolower($language)] ?? '';
+}
+
+function makeApiRequest(array $data): array {
     $headers = [
         'Authorization: Bearer ' . OPENROUTER_API_KEY,
         'Content-Type: application/json',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'https://yourdomain.com'),
+        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
         'X-Title: HackerSpaceWorkPage'
     ];
 
@@ -68,244 +219,23 @@ function makeApiRequest(array $data, int $retryCount = 0): array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT => 30,
-        CURLOPT_HEADER => true
+        CURLOPT_HEADER => false
     ]);
 
     $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     
-    if ($response === false) {
+    if (curl_errno($ch)) {
         $error = curl_error($ch);
         curl_close($ch);
-        throw new RuntimeException("Ошибка CURL: $error");
+        throw new RuntimeException("CURL Error: $error");
     }
-    
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-    $headers = substr($response, 0, $headerSize);
-    $body = substr($response, $headerSize);
     
     curl_close($ch);
 
-    // Обработка ошибки 429
-    if ($httpCode === 429) {
-        $retryAfter = 5; // Значение по умолчанию
-        if (preg_match('/retry-after:\s*(\d+)/i', $headers, $matches)) {
-            $retryAfter = (int)$matches[1];
-        }
-        sleep($retryAfter);
-        return makeApiRequest($data, $retryCount + 1);
-    }
-
     return [
         'code' => $httpCode,
-        'headers' => $headers,
-        'body' => $body
+        'body' => $response
     ];
 }
-
-function getDefaultCode(string $language): string {
-    $templates = [
-        'javascript' => '// Ваш код здесь\nfunction solution() {\n  // Реализуйте решение\n}',
-        'php' => "<?php\n// Ваш код здесь\nfunction solution() {\n  // Реализуйте решение\n}",
-        'python' => '# Ваш код здесь\ndef solution():\n    # Реализуйте решение',
-        'html' => '<!-- Ваш HTML здесь -->\n<div class="solution">\n  <!-- Реализуйте решение -->\n</div>'
-    ];
-    
-    return $templates[strtolower($language)] ?? '';
-}
-
-try {
-    if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
-        throw new RuntimeException('Прямой доступ запрещен');
-    }
-
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(405);
-        throw new RuntimeException('Разрешен только POST метод');
-    }
-
-    $jsonInput = file_get_contents('php://input');
-    if ($jsonInput === false) {
-        throw new RuntimeException('Ошибка чтения входных данных');
-    }
-
-    $input = json_decode($jsonInput, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException("Неверный JSON вход: " . json_last_error_msg());
-    }
-
-    $validatedInput = validateInput($input);
-
-    // Генерация уникального промпта для каждого запроса
-    $promptTemplates = [
-        'javascript' => [
-            'beginner' => "Сгенерируй уникальное задание по JavaScript для начинающих. Требования:\n"
-                . "1. Креативное название на русском\n2. Подробное описание задачи\n"
-                . "3. Пример решения\n4. Шаблон кода для начала работы\n\n"
-                . "Задание должно охватывать: {{concept}}. Сгенерируй JSON с полями: title, description, example, initialCode.",
-            'intermediate' => "Придумай промежуточное задание по JavaScript. Требования:\n"
-                . "1. Практическое название\n2. Четкие условия задачи\n"
-                . "3. Пример реализации\n4. Заготовка кода с комментариями\n\n"
-                . "Тема: {{concept}}. Верни JSON-ответ с полями: title, description, example, initialCode.",
-            'advanced' => "Разработай сложное задание по JavaScript для экспертов. Требования:\n"
-                . "1. Техническое название\n2. Подробная постановка проблемы\n"
-                . "3. Оптимальное решение\n4. Частичная реализация\n\n"
-                . "Фокус на: {{concept}}. Ответ должен быть в JSON с указанными полями."
-        ],
-        'php' => [
-            'beginner' => "Сгенерируй уникальное задание по php для начинающих. Требования:\n"
-                . "1. Креативное название на русском\n2. Подробное описание задачи\n"
-                . "3. Пример решения\n4. Шаблон кода для начала работы\n\n"
-                . "Задание должно охватывать: {{concept}}. Сгенерируй JSON с полями: title, description, example, initialCode.",
-            'intermediate' => "Придумай промежуточное задание по php. Требования:\n"
-                . "1. Практическое название\n2. Четкие условия задачи\n"
-                . "3. Пример реализации\n4. Заготовка кода с комментариями\n\n"
-                . "Тема: {{concept}}. Верни JSON-ответ с полями: title, description, example, initialCode.",
-            'advanced' => "Разработай сложное задание по php для экспертов. Требования:\n"
-                . "1. Техническое название\n2. Подробная постановка проблемы\n"
-                . "3. Оптимальное решение\n4. Частичная реализация\n\n"
-                . "Фокус на: {{concept}}. Ответ должен быть в JSON с указанными полями."
-        ],
-        'python' => [
-            'beginner' => "Сгенерируй уникальное задание по python для начинающих. Требования:\n"
-                . "1. Креативное название на русском\n2. Подробное описание задачи\n"
-                . "3. Пример решения\n4. Шаблон кода для начала работы\n\n"
-                . "Задание должно охватывать: {{concept}}. Сгенерируй JSON с полями: title, description, example, initialCode.",
-            'intermediate' => "Придумай промежуточное задание по python. Требования:\n"
-                . "1. Практическое название\n2. Четкие условия задачи\n"
-                . "3. Пример реализации\n4. Заготовка кода с комментариями\n\n"
-                . "Тема: {{concept}}. Верни JSON-ответ с полями: title, description, example, initialCode.",
-            'advanced' => "Разработай сложное задание по python для экспертов. Требования:\n"
-                . "1. Техническое название\n2. Подробная постановка проблемы\n"
-                . "3. Оптимальное решение\n4. Частичная реализация\n\n"
-                . "Фокус на: {{concept}}. Ответ должен быть в JSON с указанными полями."
-        ],
-        'html' => [
-            'beginner' => "Сгенерируй уникальное задание по html для начинающих. Требования:\n"
-                . "1. Креативное название на русском\n2. Подробное описание задачи\n"
-                . "3. Пример решения\n4. Шаблон кода для начала работы\n\n"
-                . "Задание должно охватывать: {{concept}}. Сгенерируй JSON с полями: title, description, example, initialCode.",
-            'intermediate' => "Придумай промежуточное задание по html. Требования:\n"
-                . "1. Практическое название\n2. Четкие условия задачи\n"
-                . "3. Пример реализации\n4. Заготовка кода с комментариями\n\n"
-                . "Тема: {{concept}}. Верни JSON-ответ с полями: title, description, example, initialCode.",
-            'advanced' => "Разработай сложное задание по html для экспертов. Требования:\n"
-                . "1. Техническое название\n2. Подробная постановка проблемы\n"
-                . "3. Оптимальное решение\n4. Частичная реализация\n\n"
-                . "Фокус на: {{concept}}. Ответ должен быть в JSON с указанными полями."
-        ],
-        // Аналогичные шаблоны для других языков...
-    ];
-
-    // Концепции для каждого уровня
-    $concepts = [
-        'javascript' => [
-            'beginner' => ['переменные', 'условия', 'циклы', 'функции', 'массивы'],
-            'intermediate' => ['замыкания', 'промисы', 'асинхронность', 'обработка ошибок', 'работа с DOM'],
-            'advanced' => ['оптимизация производительности', 'паттерны проектирования', 'Web Workers', 'сложные алгоритмы']
-        ],
-        'python' => [
-            'beginner' => ['списки', 'словари', 'функции', 'условия', 'циклы'],
-            'intermediate' => ['декораторы', 'генераторы', 'контекстные менеджеры', 'ООП'],
-            'advanced' => ['метаклассы', 'асинхронность', 'оптимизация кода', 'C-расширения']
-        ],
-        'html' => [
-            'beginner' => ['базовая разметка', 'семантические теги', 'формы', 'таблицы'],
-            'intermediate' => ['адаптивный дизайн', 'CSS анимации', 'препроцессоры', 'доступность'],
-            'advanced' => ['CSS Grid', 'кастомные свойства', 'оптимизация загрузки', 'Web Components']
-        ]
-    ];
-
-    // Выбираем случайную концепцию
-    $randomConcept = $concepts[$validatedInput['language']][$validatedInput['difficulty']][array_rand(
-        $concepts[$validatedInput['language']][$validatedInput['difficulty']]
-    )];
-
-    $prompt = str_replace(
-        '{{concept}}', 
-        $randomConcept,
-        $promptTemplates[$validatedInput['language']][$validatedInput['difficulty']] ??
-            "Сгенерируй {$validatedInput['difficulty']} задание по {$validatedInput['language']}. " .
-            "Верни JSON с полями: title, description, example, initialCode."
-    );
-
-    // Добавляем инструкцию для гарантии уникальности
-    $prompt .= "\n\nЗадание должно быть полностью уникальным и отличаться от предыдущих. " .
-               "Используй текущее время как seed: " . microtime(true);
-
-    $apiResponse = makeApiRequest([
-        'model' => DEVSTRAL_MODEL,
-        'messages' => [
-            [
-                'role' => 'system',
-                'content' => 'Ты профессиональный генератор программистских заданий. ' .
-                    'Каждое задание должно быть уникальным и соответствовать уровню сложности.'
-            ],
-            [
-                'role' => 'user',
-                'content' => $prompt
-            ]
-        ],
-        'temperature' => 1.3, // Максимальная креативность
-        'top_p' => 0.95,
-        'response_format' => ['type' => 'json_object'],
-        'seed' => (int)(microtime(true) * 1000) // Уникальное seed для каждого запроса
-    ]);
-
-    if ($apiResponse['code'] !== 200) {
-        throw new RuntimeException("API вернуло код ошибки: {$apiResponse['code']}");
-    }
-
-    $content = json_decode($apiResponse['body'], true);
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException("Неверный JSON ответ API: " . json_last_error_msg());
-    }
-
-    // Валидация ответа от нейросети
-    $requiredFields = ['title', 'description', 'example', 'initialCode'];
-    foreach ($requiredFields as $field) {
-        if (empty($content[$field])) {
-            throw new RuntimeException("Ответ API не содержит обязательное поле: $field");
-        }
-    }
-
-    $task = [
-        'title' => $content['title'],
-        'description' => $content['description'],
-        'example' => $content['example'],
-        'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
-        'difficulty' => $validatedInput['difficulty'],
-        'language' => $validatedInput['language'],
-        'concept' => $randomConcept,
-        'generatedAt' => date('Y-m-d H:i:s'),
-        'aiGenerated' => true
-    ];
-
-    echo json_encode([
-        'success' => true,
-        'task' => $task,
-        'fresh' => true
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-} catch (InvalidArgumentException $e) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
-    http_response_code(500);
-    $errorResponse = [
-        'success' => false,
-        'error' => $e->getMessage(),
-        'ai_fallback' => false
-    ];
-    
-    if (DEBUG_MODE) {
-        $errorResponse['trace'] = $e->getTraceAsString();
-    }
-    
-    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    logError("Ошибка: " . $e->getMessage() . "\nТрассировка: " . $e->getTraceAsString());
-}
+?>
