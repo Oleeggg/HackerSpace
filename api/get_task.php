@@ -94,6 +94,7 @@ function getDefaultCode(string $language): string {
 }
 
 function getFallbackTask(array $input): array {
+    // Улучшенные fallback-задания для каждого языка и уровня сложности
     $tasks = [
         'javascript' => [
             'beginner' => [
@@ -116,16 +117,114 @@ function getFallbackTask(array $input): array {
                     'description' => 'Implement a function that filters even numbers and squares them.',
                     'example' => 'function processArray(arr) {\n  return arr.filter(x => x % 2 === 0).map(x => x * x);\n}',
                     'initialCode' => 'function processArray(arr) {\n  // Your code here\n}'
+                ],
+                [
+                    'title' => 'Promise chain',
+                    'description' => 'Create a function that chains three promises sequentially.',
+                    'example' => 'async function chainPromises(promises) {\n  let result;\n  for (let promise of promises) {\n    result = await promise(result);\n  }\n  return result;\n}',
+                    'initialCode' => 'async function chainPromises(promises) {\n  // Your code here\n}'
+                ]
+            ],
+            'advanced' => [
+                [
+                    'title' => 'Memoization',
+                    'description' => 'Implement a memoization decorator for functions with multiple arguments.',
+                    'example' => 'function memoize(fn) {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn(...args);\n    cache.set(key, result);\n    return result;\n  };\n}',
+                    'initialCode' => 'function memoize(fn) {\n  // Your code here\n}'
+                ],
+                [
+                    'title' => 'Custom Observable',
+                    'description' => 'Implement a simple Observable class with subscribe and next methods.',
+                    'example' => 'class Observable {\n  constructor() {\n    this.subscribers = [];\n  }\n  subscribe(fn) {\n    this.subscribers.push(fn);\n    return () => {\n      this.subscribers = this.subscribers.filter(sub => sub !== fn);\n    };\n  }\n  next(value) {\n    this.subscribers.forEach(fn => fn(value));\n  }\n}',
+                    'initialCode' => 'class Observable {\n  // Your code here\n}'
                 ]
             ]
         ],
-        'php' => [
+        'python' => [
             'beginner' => [
                 [
                     'title' => 'String reversal',
                     'description' => 'Write a function that reverses a string.',
-                    'example' => 'function reverseString($str) {\n  return strrev($str);\n}',
-                    'initialCode' => 'function reverseString($str) {\n  // Your code here\n}'
+                    'example' => 'def reverse_string(s):\n    return s[::-1]',
+                    'initialCode' => 'def reverse_string(s):\n    # Your code here\n    pass'
+                ],
+                [
+                    'title' => 'List sum',
+                    'description' => 'Write a function that sums all numbers in a list.',
+                    'example' => 'def sum_list(numbers):\n    return sum(numbers)',
+                    'initialCode' => 'def sum_list(numbers):\n    # Your code here\n    pass'
+                ]
+            ],
+            'intermediate' => [
+                [
+                    'title' => 'Decorator',
+                    'description' => 'Create a decorator that logs function execution time.',
+                    'example' => 'import time\ndef timer(func):\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        result = func(*args, **kwargs)\n        end = time.time()\n        print(f"Execution time: {end - start} seconds")\n        return result\n    return wrapper',
+                    'initialCode' => 'import time\n\ndef timer(func):\n    # Your code here\n    pass'
+                ],
+                [
+                    'title' => 'Context manager',
+                    'description' => 'Implement a context manager for file operations.',
+                    'example' => 'class FileManager:\n    def __init__(self, filename, mode):\n        self.filename = filename\n        self.mode = mode\n    def __enter__(self):\n        self.file = open(self.filename, self.mode)\n        return self.file\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        self.file.close()',
+                    'initialCode' => 'class FileManager:\n    # Your code here\n    pass'
+                ]
+            ],
+            'advanced' => [
+                [
+                    'title' => 'Metaclass',
+                    'description' => 'Create a metaclass that adds a class registry.',
+                    'example' => 'class RegistryMeta(type):\n    registry = {}\n    def __new__(cls, name, bases, namespace):\n        new_class = super().__new__(cls, name, bases, namespace)\n        cls.registry[name] = new_class\n        return new_class',
+                    'initialCode' => 'class RegistryMeta(type):\n    # Your code here\n    pass'
+                ],
+                [
+                    'title' => 'Async generator',
+                    'description' => 'Implement an async generator that yields data from an async source.',
+                    'example' => 'async def async_gen():\n    for i in range(5):\n        await asyncio.sleep(1)\n        yield i',
+                    'initialCode' => 'import asyncio\n\nasync def async_gen():\n    # Your code here\n    pass'
+                ]
+            ]
+        ],
+        'html' => [
+            'beginner' => [
+                [
+                    'title' => 'Basic form',
+                    'description' => 'Create a contact form with name, email and message fields.',
+                    'example' => '<form>\n  <label>Name: <input type="text" name="name"></label>\n  <label>Email: <input type="email" name="email"></label>\n  <label>Message: <textarea name="message"></textarea></label>\n  <button type="submit">Send</button>\n</form>',
+                    'initialCode' => '<!-- Create your form here -->'
+                ],
+                [
+                    'title' => 'Navigation menu',
+                    'description' => 'Create a horizontal navigation menu with 5 links.',
+                    'example' => '<nav>\n  <ul>\n    <li><a href="#home">Home</a></li>\n    <li><a href="#about">About</a></li>\n    <li><a href="#services">Services</a></li>\n    <li><a href="#portfolio">Portfolio</a></li>\n    <li><a href="#contact">Contact</a></li>\n  </ul>\n</nav>',
+                    'initialCode' => '<!-- Create your navigation here -->'
+                ]
+            ],
+            'intermediate' => [
+                [
+                    'title' => 'Responsive grid',
+                    'description' => 'Create a responsive 3-column grid that stacks on mobile.',
+                    'example' => '<style>\n  .grid {\n    display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 20px;\n  }\n  @media (max-width: 768px) {\n    .grid { grid-template-columns: 1fr; }\n  }\n</style>\n<div class="grid">\n  <div class="item">1</div>\n  <div class="item">2</div>\n  <div class="item">3</div>\n</div>',
+                    'initialCode' => '<!-- Create your responsive grid here -->'
+                ],
+                [
+                    'title' => 'CSS animations',
+                    'description' => 'Create a button with hover and focus animations.',
+                    'example' => '<style>\n  .btn {\n    transition: all 0.3s ease;\n    transform: scale(1);\n  }\n  .btn:hover {\n    transform: scale(1.05);\n    box-shadow: 0 5px 15px rgba(0,0,0,0.1);\n  }\n  .btn:active {\n    transform: scale(0.95);\n  }\n</style>\n<button class="btn">Animated Button</button>',
+                    'initialCode' => '<!-- Create your animated button here -->'
+                ]
+            ],
+            'advanced' => [
+                [
+                    'title' => 'CSS custom properties',
+                    'description' => 'Create a theme switcher using CSS variables.',
+                    'example' => '<style>\n  :root {\n    --primary: #6200ee;\n    --background: #ffffff;\n  }\n  .dark {\n    --primary: #bb86fc;\n    --background: #121212;\n  }\n  body {\n    background: var(--background);\n    color: var(--text);\n  }\n</style>\n<button onclick="document.body.classList.toggle(\'dark\')">Toggle Theme</button>',
+                    'initialCode' => '<!-- Create your theme switcher here -->'
+                ],
+                [
+                    'title' => 'CSS Grid layout',
+                    'description' => 'Create a complex magazine-style layout using CSS Grid.',
+                    'example' => '<style>\n  .layout {\n    display: grid;\n    grid-template-areas:\n      "header header header"\n      "sidebar main main"\n      "footer footer footer";\n    grid-gap: 20px;\n  }\n  .header { grid-area: header; }\n  .sidebar { grid-area: sidebar; }\n  .main { grid-area: main; }\n  .footer { grid-area: footer; }\n</style>\n<div class="layout">\n  <header class="header">Header</header>\n  <aside class="sidebar">Sidebar</aside>\n  <main class="main">Main Content</main>\n  <footer class="footer">Footer</footer>\n</div>',
+                    'initialCode' => '<!-- Create your grid layout here -->'
                 ]
             ]
         ]
@@ -173,34 +272,27 @@ try {
 
     $validatedInput = validateInput($input);
 
-    // Улучшенный промпт с требованием уникальности
-    $prompt = <<<PROMPT
-Generate a completely unique programming task with these requirements:
-- Programming language: {$validatedInput['language']}
-- Difficulty level: {$validatedInput['difficulty']}
-- Must include at least one unique concept or twist
-- Should not be a common textbook example
+    // Уникальные промпты для каждого языка и уровня сложности
+    $prompts = [
+        'javascript' => [
+            'beginner' => "Generate a beginner JavaScript task focusing on basic syntax and simple algorithms. Include: 1) Clear title, 2) Detailed description, 3) Example solution, 4) Initial code template with placeholders. Task should teach fundamentals like variables, conditionals, and simple functions.",
+            'intermediate' => "Create an intermediate JavaScript task involving array methods, closures, or promises. Include: 1) Creative title, 2) Detailed problem statement, 3) Example solution, 4) Starter code. Focus on practical scenarios like data processing or API handling.",
+            'advanced' => "Design an advanced JavaScript challenge covering topics like prototypes, decorators, or async patterns. Include: 1) Complex problem, 2) Performance considerations, 3) Example solution, 4) Partial implementation. Challenge should require deep JS knowledge."
+        ],
+        'python' => [
+            'beginner' => "Generate a beginner Python task about basic syntax and data structures. Include: 1) Simple title, 2) Clear instructions, 3) Example solution, 4) Starter code. Focus on lists, strings, or basic functions.",
+            'intermediate' => "Create an intermediate Python task involving decorators, context managers, or OOP. Include: 1) Practical title, 2) Real-world scenario, 3) Example solution, 4) Partial implementation. Should require Python-specific features.",
+            'advanced' => "Design an advanced Python challenge with metaclasses, async/await, or advanced patterns. Include: 1) Complex problem, 2) Performance aspects, 3) Example solution, 4) Skeleton code. Should test expert Python knowledge."
+        ],
+        'html' => [
+            'beginner' => "Generate a beginner HTML/CSS task about basic page structure. Include: 1) Simple title, 2) Clear requirements, 3) Example solution, 4) Starter markup. Focus on semantic HTML and basic CSS.",
+            'intermediate' => "Create an intermediate HTML/CSS task involving responsive design or animations. Include: 1) Practical title, 2) Design specifications, 3) Example solution, 4) Partial code. Should require media queries or transitions.",
+            'advanced' => "Design an advanced HTML/CSS challenge with CSS Grid, custom properties, or complex layouts. Include: 1) Complex requirements, 2) Accessibility considerations, 3) Example solution, 4) Starting point. Should test modern CSS skills."
+        ]
+    ];
 
-Include these elements in the response:
-1. Creative title that reflects the task's uniqueness
-2. Detailed description with specific requirements
-3. Example solution code
-4. Initial code template with placeholders
-5. One random advanced concept to implement (e.g., recursion, closures, etc.)
-
-Return the response in STRICT JSON format exactly like this:
-{
-    "title": "Unique Task Title",
-    "description": "Detailed task description...",
-    "example": "Example solution code...",
-    "initialCode": "Initial code template...",
-    "difficulty": "{$validatedInput['difficulty']}",
-    "language": "{$validatedInput['language']}",
-    "specialConcepts": ["concept1", "concept2"]
-}
-
-Make sure each generated task is truly different from previous ones!
-PROMPT;
+    $prompt = $prompts[$validatedInput['language']][$validatedInput['difficulty']] ?? 
+        "Generate a {$validatedInput['difficulty']} level {$validatedInput['language']} programming task with title, description, example, and initial code.";
 
     $apiResponse = makeApiRequest([
         'model' => DEVSTRAL_MODEL,
