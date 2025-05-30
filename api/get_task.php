@@ -58,8 +58,9 @@ function validate_input(array $input): array {
 }
 
 function make_api_request(array $data, int $retryCount = 0): array {
-    if ($retryCount > 3) {
-        throw new RuntimeException("Превышено максимальное количество попыток запроса");
+    $maxRetries = 3;
+    if ($retryCount > $maxRetries) {
+        throw new RuntimeException("Превышено максимальное количество попыток запроса ($maxRetries)");
     }
 
     if ($retryCount > 0) {
@@ -83,6 +84,7 @@ function make_api_request(array $data, int $retryCount = 0): array {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_HEADER => true
     ]);
 
@@ -108,6 +110,10 @@ function make_api_request(array $data, int $retryCount = 0): array {
         }
         sleep($retryAfter);
         return make_api_request($data, $retryCount + 1);
+    }
+
+    if ($httpCode !== 200) {
+        throw new RuntimeException("API вернуло код ошибки: $httpCode");
     }
 
     return [
@@ -154,21 +160,49 @@ try {
 
     $validatedInput = validate_input($input);
 
-    // Генерация уникального промпта для каждого запроса
+    // Концепции для каждого уровня
+    $concepts = [
+        'javascript' => [
+            'beginner' => ['переменные', 'условия', 'циклы', 'функции', 'массивы'],
+            'intermediate' => ['замыкания', 'промисы', 'асинхронность', 'обработка ошибок', 'работа с DOM'],
+            'advanced' => ['оптимизация производительности', 'паттерны проектирования', 'Web Workers', 'сложные алгоритмы']
+        ],
+        'php' => [
+            'beginner' => ['переменные', 'условия', 'циклы', 'функции', 'массивы'],
+            'intermediate' => ['ООП', 'исключения', 'PDO', 'сессии', 'куки'],
+            'advanced' => ['оптимизация запросов', 'паттерны проектирования', 'асинхронное программирование', 'кэширование']
+        ],
+        'python' => [
+            'beginner' => ['списки', 'словари', 'функции', 'условия', 'циклы'],
+            'intermediate' => ['декораторы', 'генераторы', 'контекстные менеджеры', 'ООП'],
+            'advanced' => ['метаклассы', 'асинхронность', 'оптимизация кода', 'C-расширения']
+        ],
+        'html' => [
+            'beginner' => ['базовая разметка', 'семантические теги', 'формы', 'таблицы'],
+            'intermediate' => ['адаптивный дизайн', 'CSS анимации', 'препроцессоры', 'доступность'],
+            'advanced' => ['CSS Grid', 'кастомные свойства', 'оптимизация загрузки', 'Web Components']
+        ]
+    ];
+
+    // Выбираем случайную концепцию
+    $randomConcept = $concepts[$validatedInput['language']][$validatedInput['difficulty']][array_rand(
+        $concepts[$validatedInput['language']][$validatedInput['difficulty']]
+    )];
+
     $promptTemplates = [
         'javascript' => [
             'beginner' => "Сгенерируй уникальное задание по JavaScript для начинающих. Требования:\n"
                 . "1. Креативное название на русском\n2. Подробное описание задачи\n"
                 . "3. Пример решения\n4. Шаблон кода для начала работы\n\n"
-                . "Задание должно охватывать: {{concept}}. Сгенерируй JSON с полями: title, description, example, initialCode.",
+                . "Задание должно охватывать: $randomConcept. Сгенерируй JSON с полями: title, description, example, initialCode.",
             'intermediate' => "Придумай промежуточное задание по JavaScript. Требования:\n"
                 . "1. Практическое название\n2. Четкие условия задачи\n"
                 . "3. Пример реализации\n4. Заготовка кода с комментариями\n\n"
-                . "Тема: {{concept}}. Верни JSON-ответ с полями: title, description, example, initialCode.",
+                . "Тема: $randomConcept. Верни JSON-ответ с полями: title, description, example, initialCode.",
             'advanced' => "Разработай сложное задание по JavaScript для экспертов. Требования:\n"
                 . "1. Техническое название\n2. Подробная постановка проблемы\n"
                 . "3. Оптимальное решение\n4. Частичная реализация\n\n"
-                . "Фокус на: {{concept}}. Ответ должен быть в JSON с указанными полями."
+                . "Фокус на: $randomConcept. Ответ должен быть в JSON с указанными полями."
         ],
         'php' => [
             'beginner' => "Сгенерируй уникальное задание по php для начинающих. Требования:\n"
@@ -214,46 +248,19 @@ try {
         ],
     ];
 
-    // Концепции для каждого уровня
-    $concepts = [
-        'javascript' => [
-            'beginner' => ['переменные', 'условия', 'циклы', 'функции', 'массивы'],
-            'intermediate' => ['замыкания', 'промисы', 'асинхронность', 'обработка ошибок', 'работа с DOM'],
-            'advanced' => ['оптимизация производительности', 'паттерны проектирования', 'Web Workers', 'сложные алгоритмы']
-        ],
-        'python' => [
-            'beginner' => ['списки', 'словари', 'функции', 'условия', 'циклы'],
-            'intermediate' => ['декораторы', 'генераторы', 'контекстные менеджеры', 'ООП'],
-            'advanced' => ['метаклассы', 'асинхронность', 'оптимизация кода', 'C-расширения']
-        ],
-        'html' => [
-            'beginner' => ['базовая разметка', 'семантические теги', 'формы', 'таблицы'],
-            'intermediate' => ['адаптивный дизайн', 'CSS анимации', 'препроцессоры', 'доступность'],
-            'advanced' => ['CSS Grid', 'кастомные свойства', 'оптимизация загрузки', 'Web Components']
-        ]
-    ];
+    $prompt = $promptTemplates[$validatedInput['language']][$validatedInput['difficulty']] ?? 
+        "Сгенерируй {$validatedInput['difficulty']} задание по {$validatedInput['language']}. " .
+        "Тема: $randomConcept. Верни JSON с полями: title, description, example, initialCode.";
 
-    // Выбираем случайную концепцию
-    $randomConcept = $concepts[$validatedInput['language']][$validatedInput['difficulty']][array_rand(
-        $concepts[$validatedInput['language']][$validatedInput['difficulty']]
-    )];
+    $prompt .= "\n\nЗадание должно быть полностью уникальным. Seed: " . microtime(true);
 
-    $prompt = str_replace(
-        '{{concept}}', 
-        $randomConcept,
-        $promptTemplates[$validatedInput['language']][$validatedInput['difficulty']] ??
-            "Сгенерируй {$validatedInput['difficulty']} задание по {$validatedInput['language']}."
-    );
-
-    $prompt .= "\n\nЗадание должно быть уникальным. Seed: " . microtime(true);
-
-    // Запрос к API
-    $apiResponse = make_api_request([
+    $apiData = [
         'model' => DEVSTRAL_MODEL,
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Ты профессиональный генератор программистских заданий.'
+                'content' => 'Ты профессиональный генератор программистских заданий. ' .
+                    'Каждое задание должно быть уникальным и соответствовать уровню сложности.'
             ],
             [
                 'role' => 'user',
@@ -264,28 +271,24 @@ try {
         'top_p' => 0.95,
         'response_format' => ['type' => 'json_object'],
         'seed' => (int)(microtime(true) * 1000)
-    ]);
+    ];
 
-    if ($apiResponse['code'] !== 200) {
-        throw new RuntimeException("API вернуло код ошибки: {$apiResponse['code']}", 502);
+    $apiResponse = make_api_request($apiData);
+
+    $content = json_decode($apiResponse['body'], true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new RuntimeException("Неверный JSON ответ API: " . json_last_error_msg());
     }
 
-    // Парсинг ответа API
-    try {
-        $content = json_decode($apiResponse['body'], true, 512, JSON_THROW_ON_ERROR);
-    } catch (JsonException $e) {
-        throw new RuntimeException("Неверный JSON ответ API: " . $e->getMessage(), 502);
-    }
-
-    // Валидация ответа
-    $requiredFields = ['title', 'description', 'example'];
+    // Валидация ответа от нейросети
+    $requiredFields = ['title', 'description', 'example', 'initialCode'];
     foreach ($requiredFields as $field) {
         if (empty($content[$field])) {
-            throw new RuntimeException("Ответ API не содержит обязательное поле: $field", 502);
+            $content[$field] = "Не удалось сгенерировать $field";
         }
     }
 
-    // Формирование ответа
     $task = [
         'title' => $content['title'],
         'description' => $content['description'],
@@ -294,12 +297,14 @@ try {
         'difficulty' => $validatedInput['difficulty'],
         'language' => $validatedInput['language'],
         'concept' => $randomConcept,
-        'generatedAt' => date('Y-m-d H:i:s')
+        'generatedAt' => date('Y-m-d H:i:s'),
+        'aiGenerated' => true
     ];
 
     json_response([
         'success' => true,
-        'task' => $task
+        'task' => $task,
+        'fresh' => true
     ]);
 
 } catch (InvalidArgumentException $e) {
@@ -312,13 +317,11 @@ try {
         'success' => false,
         'error' => $e->getMessage(),
         'ai_fallback' => false
-    ], $e->getCode() ?: 500);
+    ], 500);
 } catch (Exception $e) {
-    error_log("Critical error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     json_response([
         'success' => false,
-        'error' => 'Внутренняя ошибка сервера',
+        'error' => 'Произошла непредвиденная ошибка',
         'ai_fallback' => false
     ], 500);
 }
-?>
