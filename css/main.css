@@ -808,3 +808,14 @@ p {
     color: #fff;
     border-color: #444;
 }
+.dark-theme .had_container {
+    background-color: #1e1e1e; /* Темный фон */
+}
+
+.dark-theme .had_container p {
+    color: #ffffff !important; /* Белый текст */
+}
+
+.dark-theme .logos img {
+    filter: brightness(0) invert(1); /* Инвертировать цвет логотипов для лучшей видимости */
+}
