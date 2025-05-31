@@ -1,4 +1,13 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Не показывать ошибки пользователям
+ini_set('log_errors', 1);     // Логировать ошибки
+// Удалить все буферы вывода
+while (ob_get_level()) ob_end_clean();
+
+// Начать буферизацию
+ob_start();
+
 // Режим отладки
 define('DEBUG_MODE', true);
 
@@ -29,4 +38,7 @@ if (session_status() === PHP_SESSION_NONE) {
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
+// В конце файла — очистить буфер
+ob_end_clean();
 ?>
