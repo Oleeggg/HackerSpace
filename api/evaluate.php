@@ -23,12 +23,9 @@ file_put_contents(__DIR__ . '/api_requests.log',
 );
 
 /**
- * Улучшенная обработка ответа API с расширенной проверкой JSON
+ * Улучшенная обработка ответа API
  */
 function processApiResponse(string $responseBody): array {
-    // Нормализация строки
-    $responseBody = trim($responseBody);
-    
     // Логирование сырого ответа
     file_put_contents(__DIR__ . '/api_responses.log', 
         "\n[" . date('Y-m-d H:i:s') . "] API Response\n" . $responseBody . "\n",
@@ -36,15 +33,15 @@ function processApiResponse(string $responseBody): array {
     );
 
     // Проверка на HTML-ошибки
-    if (str_starts_with($responseBody, '<!DOCTYPE') || 
-        str_starts_with($responseBody, '<html')) {
+    if (str_starts_with(trim($responseBody), '<!DOCTYPE') || 
+        str_starts_with(trim($responseBody), '<html')) {
         throw new Exception("API вернул HTML вместо JSON: " . substr($responseBody, 0, 200));
     }
 
-    // Попытка прямого декодирования JSON
+    // Попытка декодирования JSON
     $jsonData = json_decode($responseBody, true);
     if (json_last_error() === JSON_ERROR_NONE) {
-        return $this->validateEvaluation($jsonData);
+        return $jsonData;
     }
     
     // Попытки извлечения JSON из разных форматов
@@ -56,75 +53,18 @@ function processApiResponse(string $responseBody): array {
     
     foreach ($patterns as $pattern) {
         if (preg_match($pattern, $responseBody, $matches)) {
-            try {
-                $jsonData = json_decode($matches[1], true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    return $this->validateEvaluation($jsonData);
-                }
-            } catch (Exception $e) {
-                continue;
+            $jsonData = json_decode($matches[1], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $jsonData;
             }
         }
     }
     
-    // Попытка исправить распространённые проблемы с JSON
-    $fixedJson = $this->attemptJsonFix($responseBody);
-    $jsonData = json_decode($fixedJson, true);
-    if (json_last_error() === JSON_ERROR_NONE) {
-        return $this->validateEvaluation($jsonData);
-    }
-    
-    throw new Exception("Не удалось распарсить ответ API. Ошибка JSON: " . json_last_error_msg() . ". Ответ: " . substr($responseBody, 0, 500));
+    throw new Exception("Не удалось распарсить ответ API. Ответ: " . substr($responseBody, 0, 500));
 }
 
 /**
- * Попытка исправить распространённые проблемы с JSON
- */
-private function attemptJsonFix(string $json): string {
-    // Удаление висячих запятых
-    $fixed = preg_replace('/,\s*([}\]])/', '$1', $json);
-    
-    // Исправление незакавыченных ключей
-    $fixed = preg_replace('/(\w+)\s*:/', '"$1":', $fixed);
-    
-    // Удаление лишних символов в начале/конце
-    $fixed = trim($fixed);
-    $fixed = preg_replace('/^[^{[]*/', '', $fixed);
-    $fixed = preg_replace('/[^}\]]*$/', '', $fixed);
-    
-    return $fixed;
-}
-
-/**
- * Валидация структуры оценки
- */
-private function validateEvaluation(array $data): array {
-    $requiredFields = ['score', 'correctness', 'efficiency', 'readability', 'message'];
-    foreach ($requiredFields as $field) {
-        if (!array_key_exists($field, $data)) {
-            throw new Exception("Отсутствует обязательное поле в оценке: {$field}");
-        }
-    }
-    
-    // Нормализация значений
-    $data['score'] = max(0, min(100, (int)$data['score']));
-    $data['correctness'] = max(0, min(100, (int)$data['correctness']));
-    $data['efficiency'] = max(0, min(100, (int)$data['efficiency']));
-    $data['readability'] = max(0, min(100, (int)$data['readability']));
-    
-    if (!isset($data['details'])) {
-        $data['details'] = '';
-    }
-    
-    if (!isset($data['suggestions']) || !is_array($data['suggestions'])) {
-        $data['suggestions'] = [];
-    }
-    
-    return $data;
-}
-
-/**
- * Улучшенная функция запроса к API
+ * Функция запроса к API с улучшенной обработкой ошибок
  */
 function makeApiRequest(array $data): array {
     $headers = [
@@ -138,7 +78,7 @@ function makeApiRequest(array $data): array {
     file_put_contents(__DIR__ . '/api_outgoing.log', 
         "\n[" . date('Y-m-d H:i:s') . "] Outgoing to OpenRouter\n" . 
         "Headers: " . json_encode($headers) . "\n" .
-        "Data: " . json_encode($data, JSON_PRETTY_PRINT) . "\n",
+        "Data: " . json_encode($data) . "\n",
         FILE_APPEND
     );
 
@@ -152,37 +92,30 @@ function makeApiRequest(array $data): array {
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_TIMEOUT => 30,
         CURLOPT_HEADER => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_FAILONERROR => true
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
     ]);
 
     $response = curl_exec($ch);
-    
-    if ($response === false) {
-        $error = curl_error($ch);
-        $errno = curl_errno($ch);
-        curl_close($ch);
-        throw new Exception("CURL error {$errno}: {$error}");
-    }
-
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
     
     $headers = substr($response, 0, $headerSize);
     $body = substr($response, $headerSize);
+    $error = curl_error($ch);
     curl_close($ch);
 
     // Логирование ответа
     file_put_contents(__DIR__ . '/api_incoming.log', 
         "\n[" . date('Y-m-d H:i:s') . "] Response from OpenRouter\n" . 
-        "HTTP Code: {$httpCode}\n" .
-        "Headers: {$headers}\n" .
-        "Body length: " . strlen($body) . " bytes\n",
+        "HTTP Code: $httpCode\n" .
+        "Headers: $headers\n" .
+        "Body: $body\n" .
+        "Error: $error\n",
         FILE_APPEND
     );
 
-    if ($httpCode >= 400) {
-        throw new Exception("API вернул ошибку. HTTP код: {$httpCode}. Тело ответа: " . substr($body, 0, 500));
+    if ($error) {
+        throw new Exception("CURL error: $error");
     }
 
     return [
@@ -213,7 +146,7 @@ try {
     $required = ['solution', 'language'];
     foreach ($required as $field) {
         if (empty($input[$field])) {
-            throw new Exception("Обязательное поле отсутствует: {$field}", 400);
+            throw new Exception("Обязательное поле отсутствует: $field", 400);
         }
     }
 
@@ -252,11 +185,16 @@ try {
     // Отправка запроса к API
     $response = makeApiRequest($prompt);
 
+    // Проверка HTTP-статуса
+    if ($response['code'] !== 200) {
+        throw new Exception("OpenRouter API вернул статус {$response['code']}. Ответ: " . substr($response['body'], 0, 500), $response['code']);
+    }
+
     // Обработка ответа
     $apiResponse = processApiResponse($response['body']);
     
     if (!isset($apiResponse['choices'][0]['message']['content'])) {
-        throw new Exception("Неожиданная структура ответа API: " . json_encode($apiResponse, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+        throw new Exception("Неожиданная структура ответа API: " . json_encode($apiResponse, JSON_UNESCAPED_UNICODE));
     }
 
     $content = $apiResponse['choices'][0]['message']['content'];
@@ -266,8 +204,16 @@ try {
         throw new Exception("Ошибка формата оценки: " . json_last_error_msg() . ". Контент: " . substr($content, 0, 500));
     }
 
-    // Нормализация и валидация оценки
-    $evaluation = $this->validateEvaluation($evaluation);
+    // Нормализация оценки
+    $evaluation = array_merge([
+        'score' => 50,
+        'correctness' => 50,
+        'efficiency' => 50,
+        'readability' => 50,
+        'message' => 'Проверка завершена',
+        'details' => 'Детальный анализ недоступен',
+        'suggestions' => []
+    ], $evaluation);
 
     // Формирование итогового ответа
     $result = [
@@ -275,11 +221,7 @@ try {
         'evaluation' => $evaluation,
         'task_id' => $task['id'] ?? null,
         'language' => $input['language'],
-        'timestamp' => time(),
-        'debug' => [
-            'api_response' => $apiResponse,
-            'processed_content' => $content
-        ]
+        'timestamp' => time()
     ];
 
     // Очистка буфера и вывод результата
@@ -301,8 +243,7 @@ try {
         'evaluation' => [
             'score' => 0,
             'message' => 'Ошибка проверки',
-            'details' => $e->getMessage(),
-            'trace' => DEBUG_MODE ? $e->getTraceAsString() : null
+            'details' => $e->getMessage()
         ]
-    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    ], JSON_UNESCAPED_UNICODE);
 }
