@@ -1,31 +1,48 @@
 <?php
+// Включение строгого режима и буферизации вывода
+declare(strict_types=1);
+
+// Удаление всех возможных выводов перед началом работы
+while (ob_get_level()) ob_end_clean();
+ob_start();
+
+// Подключение конфигурации
 require_once(__DIR__ . '/../config.php');
 
-// Очистка буфера и заголовки
-while (ob_get_level()) ob_end_clean();
+// Установка заголовков
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
-// Улучшенная функция обработки ответа API
-function processApiResponse($responseBody) {
-    // Сохраняем сырой ответ для отладки
+/**
+ * Улучшенная обработка ответа API
+ */
+function processApiResponse(string $responseBody): array {
+    // Логирование сырого ответа для отладки
     file_put_contents(__DIR__ . '/last_api_response.txt', $responseBody);
     
-    // Пытаемся декодировать как чистый JSON
+    // Проверка на HTML-ошибки
+    if (str_starts_with(trim($responseBody), '<!DOCTYPE') || 
+        str_starts_with(trim($responseBody), '<html')) {
+        throw new Exception("API вернул HTML вместо JSON");
+    }
+
+    // Попытка прямого декодирования JSON
     $jsonData = json_decode($responseBody, true);
     if (json_last_error() === JSON_ERROR_NONE) {
         return $jsonData;
     }
     
-    // Пытаемся извлечь JSON из возможных оберток
-    $jsonPatterns = [
-        '/```json\s*(\{.*\})\s*```/s',    // Markdown с кодом JSON
-        '/```\s*(\{.*\})\s*```/s',        // Markdown без указания json
-        '/<pre><code>\s*(\{.*\})\s*<\/code><\/pre>/is', // HTML+pre+code
-        '/<pre>\s*(\{.*\})\s*<\/pre>/is', // HTML+pre
-        '/\{.*\}/s'                        // Просто JSON в тексте
+    // Попытки извлечения JSON из разных форматов
+    $patterns = [
+        '/```json\s*(\{.*\})\s*```/s',
+        '/```\s*(\{.*\})\s*```/s',
+        '/<pre><code>\s*(\{.*\})\s*<\/code><\/pre>/is',
+        '/\{.*\}/s'
     ];
     
-    foreach ($jsonPatterns as $pattern) {
+    foreach ($patterns as $pattern) {
         if (preg_match($pattern, $responseBody, $matches)) {
             $jsonData = json_decode($matches[1], true);
             if (json_last_error() === JSON_ERROR_NONE) {
@@ -34,58 +51,47 @@ function processApiResponse($responseBody) {
         }
     }
     
-    // Если ничего не помогло - пробуем очистить HTML и распарсить
-    $cleaned = strip_tags($responseBody);
-    $jsonData = json_decode($cleaned, true);
-    if (json_last_error() === JSON_ERROR_NONE) {
-        return $jsonData;
-    }
-    
-    throw new Exception("Failed to parse API response. First 200 chars: " . substr($responseBody, 0, 200));
+    throw new Exception("Не удалось распарсить ответ API. Ответ: " . substr($responseBody, 0, 200));
 }
 
 try {
-    session_start();
-    
-    // Проверка CSRF токена
-    if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || empty($_SESSION['csrf_token']) || 
+    // Проверка сессии и CSRF-токена
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || 
+        empty($_SESSION['csrf_token']) || 
         !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
-        throw new Exception('CSRF token validation failed');
+        throw new Exception('Ошибка проверки CSRF-токена', 403);
     }
 
-    // Получение входных данных
-    $jsonInput = file_get_contents('php://input');
-    if ($jsonInput === false) {
-        throw new Exception('Failed to read input data');
-    }
-
-    $input = json_decode($jsonInput, true);
+    // Получение и валидация входных данных
+    $input = json_decode(file_get_contents('php://input'), true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Invalid JSON input: ' . json_last_error_msg());
+        throw new Exception('Неверный JSON-ввод: ' . json_last_error_msg(), 400);
     }
 
-    // Валидация
     $required = ['solution', 'language'];
     foreach ($required as $field) {
         if (empty($input[$field])) {
-            throw new Exception("Missing required field: $field");
+            throw new Exception("Обязательное поле отсутствует: $field", 400);
         }
     }
 
     if (!isset($_SESSION['current_task'])) {
-        throw new Exception('No active task found');
+        throw new Exception('Активное задание не найдено', 404);
     }
 
     $task = $_SESSION['current_task'];
     
-    // Формирование строгого промпта
+    // Формирование промпта
     $prompt = [
         'model' => DEVSTRAL_MODEL,
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'Ты — ассистент для проверки кода. Отвечай ТОЛЬКО в формате JSON без каких-либо пояснений или оберток. Шаблон ответа:
-{
+                'content' => 'Ты — ассистент для проверки кода. Отвечай ТОЛЬКО в формате JSON. Шаблон ответа: {
   "score": 0-100,
   "correctness": 0-100,
   "efficiency": 0-100,
@@ -105,52 +111,40 @@ try {
         'response_format' => ['type' => 'json_object']
     ];
 
-    // Отправка запроса
+    // Отправка запроса к API
     $response = makeApiRequest($prompt);
 
-    // Проверка HTTP статуса
+    // Проверка HTTP-статуса
     if ($response['code'] !== 200) {
-        throw new Exception("API returned status {$response['code']}. Response: " . substr($response['body'], 0, 200));
+        throw new Exception("API вернул статус {$response['code']}", $response['code']);
     }
 
-    // Парсинг ответа
+    // Обработка ответа
     $apiResponse = processApiResponse($response['body']);
     
-    // Проверка структуры ответа AI
     if (!isset($apiResponse['choices'][0]['message']['content'])) {
-        throw new Exception("Unexpected API response structure");
+        throw new Exception("Неожиданная структура ответа API");
     }
 
-    // Получение и проверка контента
     $content = $apiResponse['choices'][0]['message']['content'];
-    if (is_string($content)) {
-        $evaluation = json_decode($content, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("Invalid evaluation format: " . json_last_error_msg());
-        }
-    } else {
-        $evaluation = $content;
+    $evaluation = is_string($content) ? json_decode($content, true) : $content;
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Ошибка формата оценки: " . json_last_error_msg());
     }
 
     // Нормализация оценки
-    $defaultEvaluation = [
+    $evaluation = array_merge([
         'score' => 50,
         'correctness' => 50,
         'efficiency' => 50,
         'readability' => 50,
-        'message' => 'Evaluation completed',
-        'details' => 'No detailed feedback available',
+        'message' => 'Проверка завершена',
+        'details' => 'Детальный анализ недоступен',
         'suggestions' => []
-    ];
-    
-    $evaluation = array_merge($defaultEvaluation, $evaluation);
-    
-    // Ограничение значений
-    foreach (['score', 'correctness', 'efficiency', 'readability'] as $key) {
-        $evaluation[$key] = max(0, min(100, (int)$evaluation[$key]));
-    }
+    ], $evaluation);
 
-    // Формирование ответа
+    // Формирование итогового ответа
     $result = [
         'success' => true,
         'evaluation' => $evaluation,
@@ -159,29 +153,34 @@ try {
         'timestamp' => time()
     ];
 
+    // Очистка буфера и вывод результата
+    ob_end_clean();
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
-    // Логирование
-    error_log("Evaluation error: " . $e->getMessage());
+    // Очистка буфера перед выводом ошибки
+    ob_end_clean();
     
-    // Формирование ошибки
-    $errorResponse = [
+    // Логирование ошибки
+    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation error: " . $e->getMessage());
+    
+    // Формирование ответа с ошибкой
+    http_response_code($e->getCode() ?: 500);
+    echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'evaluation' => [
             'score' => 0,
-            'message' => 'Evaluation failed',
+            'message' => 'Ошибка проверки',
             'details' => $e->getMessage()
         ]
-    ];
-    
-    http_response_code(500);
-    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE);
+    ], JSON_UNESCAPED_UNICODE);
 }
 
-// Улучшенная функция запроса
-function makeApiRequest($data, $maxRetries = 3) {
+/**
+ * Функция запроса к API с улучшенной обработкой ошибок
+ */
+function makeApiRequest(array $data, int $maxRetries = 3): array {
     $headers = [
         'Authorization: Bearer ' . OPENROUTER_API_KEY,
         'Content-Type: application/json',
@@ -206,20 +205,18 @@ function makeApiRequest($data, $maxRetries = 3) {
         ]);
 
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
         
-        if (curl_errno($ch)) {
-            $lastError = curl_error($ch);
-            curl_close($ch);
-            $retryCount++;
-            if ($retryCount <= $maxRetries) {
-                usleep(500000 * $retryCount); // Увеличивающаяся пауза
+        if ($error) {
+            $lastError = $error;
+            if (++$retryCount <= $maxRetries) {
+                usleep(500000 * $retryCount);
                 continue;
             }
-            throw new Exception("CURL error after $maxRetries attempts: $lastError");
+            throw new Exception("CURL ошибка после $maxRetries попыток: $lastError");
         }
-        
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
         
         return [
             'code' => $httpCode,
@@ -228,6 +225,6 @@ function makeApiRequest($data, $maxRetries = 3) {
         
     } while ($retryCount <= $maxRetries);
     
-    throw new Exception("Max retries ($maxRetries) reached: $lastError");
+    throw new Exception("Достигнуто максимальное число попыток ($maxRetries): $lastError");
 }
 ?>
