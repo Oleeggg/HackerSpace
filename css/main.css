@@ -727,16 +727,43 @@ p {
 
 /* ... остальные стили для настроек ... */
 
-/* Стили для темной темы */
+/* Общие стили для темной темы */
 .dark-theme {
     background: #121212;
     color: #ffffff;
 }
 
+.dark-theme p,
+.dark-theme label,
+.dark-theme h1,
+.dark-theme h2,
+.dark-theme h3,
+.dark-theme td,
+.dark-theme .for_developers,
+.dark-theme .help {
+    color: #ffffff !important;
+}
+
+/* Контейнер приветствия в темной теме */
+.dark-theme .container_hello {
+    background-color: #1e1e1e;
+}
+
+/* Кнопка "Для разработчиков" в темной теме */
+.dark-theme .for_developers {
+    color: #ffffff !important;
+}
+
+.dark-theme .for_developers:visited {
+    color: #ffffff !important;
+}
+
+/* Модальные окна в темной теме */
 .dark-theme .modal-content,
 .dark-theme .profile-modal-content,
 .dark-theme .confirm-content,
-.dark-theme .settings-content {
+.dark-theme .settings-content,
+.dark-theme .message-content {
     background-color: #1e1e1e;
     color: #ffffff;
 }
@@ -757,8 +784,27 @@ p {
     background-color: #4CAF50;
 }
 
+/* Выпадающее меню профиля в темной теме */
+.dark-theme .profile-dropdown {
+    background-color: #1e1e1e;
+    color: #ffffff;
+}
 
+.dark-theme .profile-dropdown a {
+    color: #ffffff;
+}
 
+.dark-theme .profile-dropdown a:hover {
+    background-color: #333;
+}
 
+/* Обратная связь в темной теме */
+.dark-theme .feedback-modal {
+    background-color: #1e1e1e;
+}
 
-
+.dark-theme .feedback-form textarea {
+    background-color: #333;
+    color: #fff;
+    border-color: #444;
+}
