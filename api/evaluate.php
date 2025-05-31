@@ -1,8 +1,7 @@
 <?php
-// Включение строгого режима и буферизации вывода
 declare(strict_types=1);
 
-// Удаление всех возможных выводов перед началом работы
+// Очистка буфера и начало новой буферизации
 while (ob_get_level()) ob_end_clean();
 ob_start();
 
@@ -15,20 +14,31 @@ header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
+// Логирование запроса
+file_put_contents(__DIR__ . '/api_requests.log', 
+    "\n[" . date('Y-m-d H:i:s') . "] New request\n" . 
+    "Headers: " . json_encode(getallheaders()) . "\n" .
+    "Input: " . file_get_contents('php://input') . "\n",
+    FILE_APPEND
+);
+
 /**
  * Улучшенная обработка ответа API
  */
 function processApiResponse(string $responseBody): array {
-    // Логирование сырого ответа для отладки
-    file_put_contents(__DIR__ . '/last_api_response.txt', $responseBody);
-    
+    // Логирование сырого ответа
+    file_put_contents(__DIR__ . '/api_responses.log', 
+        "\n[" . date('Y-m-d H:i:s') . "] API Response\n" . $responseBody . "\n",
+        FILE_APPEND
+    );
+
     // Проверка на HTML-ошибки
     if (str_starts_with(trim($responseBody), '<!DOCTYPE') || 
         str_starts_with(trim($responseBody), '<html')) {
-        throw new Exception("API вернул HTML вместо JSON");
+        throw new Exception("API вернул HTML вместо JSON: " . substr($responseBody, 0, 200));
     }
 
-    // Попытка прямого декодирования JSON
+    // Попытка декодирования JSON
     $jsonData = json_decode($responseBody, true);
     if (json_last_error() === JSON_ERROR_NONE) {
         return $jsonData;
@@ -38,7 +48,6 @@ function processApiResponse(string $responseBody): array {
     $patterns = [
         '/```json\s*(\{.*\})\s*```/s',
         '/```\s*(\{.*\})\s*```/s',
-        '/<pre><code>\s*(\{.*\})\s*<\/code><\/pre>/is',
         '/\{.*\}/s'
     ];
     
@@ -51,7 +60,69 @@ function processApiResponse(string $responseBody): array {
         }
     }
     
-    throw new Exception("Не удалось распарсить ответ API. Ответ: " . substr($responseBody, 0, 200));
+    throw new Exception("Не удалось распарсить ответ API. Ответ: " . substr($responseBody, 0, 500));
+}
+
+/**
+ * Функция запроса к API с улучшенной обработкой ошибок
+ */
+function makeApiRequest(array $data): array {
+    $headers = [
+        'Authorization: Bearer ' . OPENROUTER_API_KEY,
+        'Content-Type: application/json',
+        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+        'X-Title: HackerSpaceWorkPage'
+    ];
+
+    // Логирование запроса
+    file_put_contents(__DIR__ . '/api_outgoing.log', 
+        "\n[" . date('Y-m-d H:i:s') . "] Outgoing to OpenRouter\n" . 
+        "Headers: " . json_encode($headers) . "\n" .
+        "Data: " . json_encode($data) . "\n",
+        FILE_APPEND
+    );
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => OPENROUTER_API_URL,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HEADER => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    
+    $headers = substr($response, 0, $headerSize);
+    $body = substr($response, $headerSize);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    // Логирование ответа
+    file_put_contents(__DIR__ . '/api_incoming.log', 
+        "\n[" . date('Y-m-d H:i:s') . "] Response from OpenRouter\n" . 
+        "HTTP Code: $httpCode\n" .
+        "Headers: $headers\n" .
+        "Body: $body\n" .
+        "Error: $error\n",
+        FILE_APPEND
+    );
+
+    if ($error) {
+        throw new Exception("CURL error: $error");
+    }
+
+    return [
+        'code' => $httpCode,
+        'headers' => $headers,
+        'body' => $body
+    ];
 }
 
 try {
@@ -116,21 +187,21 @@ try {
 
     // Проверка HTTP-статуса
     if ($response['code'] !== 200) {
-        throw new Exception("API вернул статус {$response['code']}", $response['code']);
+        throw new Exception("OpenRouter API вернул статус {$response['code']}. Ответ: " . substr($response['body'], 0, 500), $response['code']);
     }
 
     // Обработка ответа
     $apiResponse = processApiResponse($response['body']);
     
     if (!isset($apiResponse['choices'][0]['message']['content'])) {
-        throw new Exception("Неожиданная структура ответа API");
+        throw new Exception("Неожиданная структура ответа API: " . json_encode($apiResponse, JSON_UNESCAPED_UNICODE));
     }
 
     $content = $apiResponse['choices'][0]['message']['content'];
     $evaluation = is_string($content) ? json_decode($content, true) : $content;
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception("Ошибка формата оценки: " . json_last_error_msg());
+        throw new Exception("Ошибка формата оценки: " . json_last_error_msg() . ". Контент: " . substr($content, 0, 500));
     }
 
     // Нормализация оценки
@@ -162,7 +233,7 @@ try {
     ob_end_clean();
     
     // Логирование ошибки
-    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation error: " . $e->getMessage());
+    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     
     // Формирование ответа с ошибкой
     http_response_code($e->getCode() ?: 500);
@@ -176,55 +247,3 @@ try {
         ]
     ], JSON_UNESCAPED_UNICODE);
 }
-
-/**
- * Функция запроса к API с улучшенной обработкой ошибок
- */
-function makeApiRequest(array $data, int $maxRetries = 3): array {
-    $headers = [
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        'Content-Type: application/json',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
-        'X-Title: HackerSpaceWorkPage'
-    ];
-
-    $retryCount = 0;
-    $lastError = null;
-    
-    do {
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => OPENROUTER_API_URL,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($data),
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_TIMEOUT => 60,
-            CURLOPT_HEADER => false
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        
-        if ($error) {
-            $lastError = $error;
-            if (++$retryCount <= $maxRetries) {
-                usleep(500000 * $retryCount);
-                continue;
-            }
-            throw new Exception("CURL ошибка после $maxRetries попыток: $lastError");
-        }
-        
-        return [
-            'code' => $httpCode,
-            'body' => $response
-        ];
-        
-    } while ($retryCount <= $maxRetries);
-    
-    throw new Exception("Достигнуто максимальное число попыток ($maxRetries): $lastError");
-}
-?>
