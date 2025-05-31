@@ -41,7 +41,6 @@ function validateInput(array $input): array {
 }
 
 function extractJsonFromResponse(string $responseBody): string {
-    // Попытка найти JSON в ответе (даже если он в HTML или Markdown)
     if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $responseBody, $matches)) {
         return $matches[1];
     }
@@ -58,7 +57,6 @@ function extractJsonFromResponse(string $responseBody): string {
 }
 
 function parseApiResponse(string $responseBody): array {
-    // Сохраняем сырой ответ для отладки
     file_put_contents(__DIR__ . '/last_api_response.txt', $responseBody);
     
     $jsonString = extractJsonFromResponse($responseBody);
@@ -68,11 +66,9 @@ function parseApiResponse(string $responseBody): array {
         throw new RuntimeException("Invalid API response JSON: " . json_last_error_msg() . ". Raw response: " . substr($responseBody, 0, 200));
     }
 
-    // Обработка структуры ответа OpenRouter
     if (isset($data['choices'][0]['message']['content'])) {
         $content = $data['choices'][0]['message']['content'];
         
-        // Если контент - строка, пытаемся извлечь из неё JSON
         if (is_string($content)) {
             $content = extractJsonFromResponse($content);
             $content = json_decode($content, true);
@@ -84,7 +80,6 @@ function parseApiResponse(string $responseBody): array {
         $data = $content;
     }
 
-    // Проверка обязательных полей в задании
     $requiredFields = ['title', 'description'];
     foreach ($requiredFields as $field) {
         if (!isset($data[$field])) {
@@ -120,7 +115,12 @@ try {
 
     $validatedInput = validateInput($input);
 
-    // Формирование промпта с четким требованием JSON
+    // Очищаем предыдущее задание из сессии
+    if (isset($_SESSION['current_task'])) {
+        unset($_SESSION['current_task']);
+    }
+
+    // Формирование промпта
     $prompt = <<<PROMPT
     Generate a programming task in STRICT JSON format (no Markdown, no code blocks) with these fields:
     {
@@ -160,17 +160,21 @@ try {
 
     $content = parseApiResponse($apiResponse['body']);
 
+    // Сохраняем задание в сессии
+    $_SESSION['current_task'] = [
+        'id' => uniqid('task_', true),
+        'title' => $content['title'] ?? 'Programming Task',
+        'description' => $content['description'] ?? '',
+        'example' => $content['example'] ?? '',
+        'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
+        'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
+        'language' => $content['language'] ?? $validatedInput['language']
+    ];
+
     // Формирование ответа
     $response = [
         'success' => true,
-        'task' => [
-            'title' => $content['title'] ?? 'Programming Task',
-            'description' => $content['description'] ?? '',
-            'example' => $content['example'] ?? '',
-            'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
-            'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
-            'language' => $content['language'] ?? $validatedInput['language']
-        ]
+        'task' => $_SESSION['current_task']
     ];
 
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -246,4 +250,3 @@ function makeApiRequest(array $data): array {
         'body' => $response
     ];
 }
-?>
