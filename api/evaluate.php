@@ -1,9 +1,16 @@
 <?php
 declare(strict_types=1);
 
-// Очистка буфера и начало новой буферизации
-while (ob_get_level()) ob_end_clean();
-ob_start();
+// Очистка буфера
+if (ob_get_level() > 0) {
+    ob_end_clean();
+}
+
+// Логирование ошибок
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/evaluate_errors.log');
 
 // Подключение конфигурации
 require_once(__DIR__ . '/../config.php');

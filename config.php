@@ -28,10 +28,6 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
 // Удалить все буферы вывода
-while (ob_get_level()) ob_end_clean();
-
-// Начать буферизацию
-ob_start();
 
 // Режим отладки
 define('DEBUG_MODE', true);
