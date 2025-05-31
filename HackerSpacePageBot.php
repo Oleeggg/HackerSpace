@@ -73,7 +73,8 @@ if (isset($_POST['delete_account']) && $logged_in) {
     session_destroy();
     header("Location: ".$_SERVER['PHP_SELF']);
     exit();
-}?>
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
