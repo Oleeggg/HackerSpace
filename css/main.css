@@ -725,88 +725,36 @@ p {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.settings-header {
-    padding: 16px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* ... остальные стили для настроек ... */
+
+/* Стили для темной темы */
+.dark-theme {
+    background: #121212;
+    color: #ffffff;
 }
 
-.settings-header h2 {
-    margin: 0;
-    font-size: 1.25rem;
+.dark-theme .modal-content,
+.dark-theme .profile-modal-content,
+.dark-theme .confirm-content,
+.dark-theme .settings-content {
+    background-color: #1e1e1e;
+    color: #ffffff;
 }
 
-.settings-close {
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #888;
+.dark-theme .profile-info td,
+.dark-theme .setting-option,
+.dark-theme .language-option {
+    border-color: #333;
 }
 
-.settings-body {
-    padding: 16px;
+.dark-theme .theme-btn {
+    border-color: #444;
+    background-color: #333;
+    color: #fff;
 }
 
-.setting-option {
-    margin-bottom: 24px;
-}
-
-.setting-option h3 {
-    margin: 0 0 12px 0;
-    font-size: 1rem;
-}
-
-.language-option {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.language-check {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-.theme-options {
-    display: flex;
-    gap: 8px;
-}
-
-.theme-btn {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid #ddd;
-    background: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.theme-btn.active {
+.dark-theme .theme-btn.active {
     background-color: #4CAF50;
-    color: white;
-    border-color: #4CAF50;
-}
-
-.settings-footer {
-    padding: 16px;
-    border-top: 1px solid #eee;
-    text-align: right;
-}
-
-.save-btn {
-    padding: 8px 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.save-btn:hover {
-    background-color: #45a049;
 }
 
 

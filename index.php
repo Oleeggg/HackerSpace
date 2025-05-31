@@ -338,7 +338,7 @@ if (isset($_POST['send_feedback'])) {
         </div>
     </div>
 
-        <div id="confirmDeleteModal" class="confirm-modal">
+    <div id="confirmDeleteModal" class="confirm-modal">
         <div class="confirm-content">
             <h3>Подтверждение удаления</h3>
             <p>Вы уверены, что хотите удалить свой аккаунт? Это действие нельзя отменить.</p>
@@ -403,87 +403,35 @@ if (isset($_POST['send_feedback'])) {
     </div>
     <?php endif; ?>
     
-<!-- Модальное окно настроек -->
-<div id="settingsModal" class="settings-modal">
-    <div class="settings-content">
-        <div class="settings-header">
-            <h2>Настройки</h2>
-            <span class="settings-close">&times;</span>
-        </div>
-        <div class="settings-body">
-            <div class="setting-option">
-                <span>Язык</span>
-                <div class="language-option">
-                    <span>Русский</span>
-                    <span class="language-check">✔</span>
+    <!-- Модальное окно настроек -->
+    <div id="settingsModal" class="settings-modal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2>Настройки</h2>
+                <span class="settings-close">&times;</span>
+            </div>
+            <div class="settings-body">
+                <div class="setting-option">
+                    <span>Язык</span>
+                    <div class="language-option">
+                        <span>Русский</span>
+                        <span class="language-check">✔</span>
+                    </div>
+                </div>
+                <div class="setting-option">
+                    <h3>Тема</h3>
+                    <div class="theme-options">
+                        <button id="lightTheme" class="theme-btn active">Светлая</button>
+                        <button id="darkTheme" class="theme-btn">Тёмная</button>
+                    </div>
                 </div>
             </div>
-            <div class="setting-option">
-                <h3>Тема</h3>
-                <div class="theme-options">
-                    <button id="lightTheme" class="theme-btn active">Светлая</button>
-                    <button id="darkTheme" class="theme-btn">Тёмная</button>
-                </div>
+            <div class="settings-footer">
+                <button id="saveSettings" class="save-btn">Сохранить</button>
             </div>
-        </div>
-        <div class="settings-footer">
-            <button id="saveSettings" class="save-btn">Сохранить</button>
         </div>
     </div>
-</div>
 
-    <script>
-       // Функция открытия модального окна настроек
-function openSettingsModal() {
-    document.getElementById('settingsModalBtn').style.display = 'flex';
-}
-
-// Закрытие модального окна настроек
-document.querySelector('.settings-close').addEventListener('click', function() {
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-// Обработка выбора темы
-document.getElementById('lightTheme').addEventListener('click', function() {
-    document.getElementById('lightTheme').classList.add('active');
-    document.getElementById('darkTheme').classList.remove('active');
-});
-
-document.getElementById('darkTheme').addEventListener('click', function() {
-    document.getElementById('darkTheme').classList.add('active');
-    document.getElementById('lightTheme').classList.remove('active');
-});
-
-// Сохранение настроек
-document.getElementById('saveSettings').addEventListener('click', function() {
-    const selectedTheme = document.getElementById('lightTheme').classList.contains('active') ? 'light' : 'dark';
-    localStorage.setItem('theme', selectedTheme);
-    applyTheme();
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-// Применение темы
-function applyTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-theme');
-    } else {
-        document.body.classList.remove('dark-theme');
-    }
-}
-
-// Закрытие при клике вне модального окна
-window.addEventListener('click', function(event) {
-    if (event.target === document.getElementById('settingsModal')) {
-        document.getElementById('settingsModal').style.display = 'none';
-    }
-});
-
-// Инициализация при загрузке
-window.addEventListener('DOMContentLoaded', function() {
-    applyTheme();
-});
-    </script>
     <script>
         // Обработка клика по профилю
         document.getElementById('profileBtn')?.addEventListener('click', function() {
@@ -575,8 +523,7 @@ window.addEventListener('DOMContentLoaded', function() {
         document.querySelector('.logout-btn')?.addEventListener('click', function() {
             window.location.href = '?logout';
         });
-    </script>
-    <script>
+        
         // Обработка кнопки "Контакт с нами"
         document.querySelector('a[href="contact.html"]')?.addEventListener('click', function(e) {
             e.preventDefault();
@@ -595,6 +542,69 @@ window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('overlay')?.addEventListener('click', function() {
             document.getElementById('feedbackModal').classList.remove('show');
             this.classList.remove('show');
+        });
+        
+        // Обработка модального окна настроек
+        document.getElementById('settingsModalBtn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('profileDropdown').classList.remove('show');
+            document.getElementById('settingsModal').style.display = 'flex';
+            
+            // Установка текущей темы
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            if (currentTheme === 'dark') {
+                document.getElementById('darkTheme').classList.add('active');
+                document.getElementById('lightTheme').classList.remove('active');
+            } else {
+                document.getElementById('lightTheme').classList.add('active');
+                document.getElementById('darkTheme').classList.remove('active');
+            }
+        });
+        
+        // Закрытие модального окна настроек
+        document.querySelector('.settings-close')?.addEventListener('click', function() {
+            document.getElementById('settingsModal').style.display = 'none';
+        });
+        
+        // Обработка выбора темы
+        document.getElementById('lightTheme')?.addEventListener('click', function() {
+            document.getElementById('lightTheme').classList.add('active');
+            document.getElementById('darkTheme').classList.remove('active');
+        });
+        
+        document.getElementById('darkTheme')?.addEventListener('click', function() {
+            document.getElementById('darkTheme').classList.add('active');
+            document.getElementById('lightTheme').classList.remove('active');
+        });
+        
+        // Сохранение настроек
+        document.getElementById('saveSettings')?.addEventListener('click', function() {
+            const selectedTheme = document.getElementById('lightTheme').classList.contains('active') ? 'light' : 'dark';
+            localStorage.setItem('theme', selectedTheme);
+            applyTheme();
+            document.getElementById('settingsModal').style.display = 'none';
+        });
+        
+        // Применение темы
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+            }
+        }
+        
+        // Инициализация темы при загрузке
+        window.addEventListener('DOMContentLoaded', function() {
+            applyTheme();
+        });
+        
+        // Закрытие при клике вне модального окна
+        window.addEventListener('click', function(event) {
+            if (event.target === document.getElementById('settingsModal')) {
+                document.getElementById('settingsModal').style.display = 'none';
+            }
         });
         
         // Автоматическое закрытие сообщений через 5 секунд
