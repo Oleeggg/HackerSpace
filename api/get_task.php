@@ -40,53 +40,59 @@ function validateInput(array $input): array {
     ];
 }
 
-function parseApiResponse(string $responseBody): array {
-    // Проверка на HTML ошибки
-    if (strpos($responseBody, '<!DOCTYPE') !== false || strpos($responseBody, '<html') !== false) {
-        $dom = new DOMDocument();
-        @$dom->loadHTML($responseBody);
-        $errorText = '';
-        
-        foreach ($dom->getElementsByTagName('p') as $p) {
-            $errorText .= $p->textContent . "\n";
-        }
-        
-        throw new RuntimeException("API returned HTML error: " . trim($errorText) ?: substr(strip_tags($responseBody), 0, 200));
+function extractJsonFromResponse(string $responseBody): string {
+    // Попытка найти JSON в ответе (даже если он в HTML или Markdown)
+    if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $responseBody, $matches)) {
+        return $matches[1];
     }
-
-    $data = json_decode($responseBody, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException("Invalid API response JSON: " . json_last_error_msg());
-    }
-
-    if (!isset($data['choices'][0]['message']['content'])) {
-        throw new RuntimeException("Unexpected API response structure");
-    }
-
-    $content = $data['choices'][0]['message']['content'];
     
-    // Попробуем сначала как строку JSON
-    $decodedContent = json_decode($content, true);
+    if (preg_match('/<pre[^>]*>(.*?)<\/pre>/is', $responseBody, $matches)) {
+        return $matches[1];
+    }
+    
+    if (preg_match('/\{.*\}/s', $responseBody, $matches)) {
+        return $matches[0];
+    }
+    
+    return $responseBody;
+}
+
+function parseApiResponse(string $responseBody): array {
+    // Сохраняем сырой ответ для отладки
+    file_put_contents(__DIR__ . '/last_api_response.txt', $responseBody);
+    
+    $jsonString = extractJsonFromResponse($responseBody);
+    
+    $data = json_decode($jsonString, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        // Если не JSON, возможно это строка с JSON внутри
-        if (preg_match('/\{.*\}/s', $content, $matches)) {
-            $decodedContent = json_decode($matches[0], true);
+        throw new RuntimeException("Invalid API response JSON: " . json_last_error_msg() . ". Raw response: " . substr($responseBody, 0, 200));
+    }
+
+    // Обработка структуры ответа OpenRouter
+    if (isset($data['choices'][0]['message']['content'])) {
+        $content = $data['choices'][0]['message']['content'];
+        
+        // Если контент - строка, пытаемся извлечь из неё JSON
+        if (is_string($content)) {
+            $content = extractJsonFromResponse($content);
+            $content = json_decode($content, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new RuntimeException("Invalid task content JSON: " . json_last_error_msg());
+            }
         }
         
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new RuntimeException("Invalid task content JSON: " . json_last_error_msg() . ". Content: " . substr($content, 0, 200));
-        }
+        $data = $content;
     }
 
     // Проверка обязательных полей в задании
     $requiredFields = ['title', 'description'];
     foreach ($requiredFields as $field) {
-        if (!isset($decodedContent[$field])) {
+        if (!isset($data[$field])) {
             throw new RuntimeException("Missing required field in task: $field");
         }
     }
 
-    return $decodedContent;
+    return $data;
 }
 
 try {
@@ -114,21 +120,22 @@ try {
 
     $validatedInput = validateInput($input);
 
-    // Формирование промпта
+    // Формирование промпта с четким требованием JSON
     $prompt = <<<PROMPT
-    Generate a programming task with:
-    - Language: {$validatedInput['language']}
-    - Difficulty: {$validatedInput['difficulty']}
-    
-    Return STRICT JSON format with these fields:
+    Generate a programming task in STRICT JSON format (no Markdown, no code blocks) with these fields:
     {
         "title": "Task title",
-        "description": "Detailed description",
-        "example": "Code example",
-        "initialCode": "Starter code",
+        "description": "Detailed task description with requirements",
+        "example": "Code example solution",
+        "initialCode": "Starter code for the task",
         "difficulty": "{$validatedInput['difficulty']}",
         "language": "{$validatedInput['language']}"
     }
+    
+    Important:
+    - Return ONLY the JSON object
+    - Do not wrap response in Markdown or HTML
+    - Do not include any explanations
     PROMPT;
 
     $apiResponse = makeApiRequest([
@@ -136,7 +143,7 @@ try {
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a programming task generator. Always respond with valid JSON.'
+                'content' => 'You are a programming task generator. Respond ONLY with valid JSON object containing the task.'
             ],
             [
                 'role' => 'user',
@@ -183,13 +190,14 @@ try {
     
     if (DEBUG_MODE) {
         $errorResponse['trace'] = $e->getTraceAsString();
+        $errorResponse['raw_response'] = file_exists(__DIR__ . '/last_api_response.txt') 
+            ? file_get_contents(__DIR__ . '/last_api_response.txt')
+            : null;
     }
     
     echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     logError("Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
 }
-
-// Остальные функции (getDefaultCode, makeApiRequest) остаются без изменений
 
 function getDefaultCode(string $language): string {
     $templates = [
