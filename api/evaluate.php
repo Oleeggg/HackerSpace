@@ -2,174 +2,82 @@
 declare(strict_types=1);
 
 // Очистка буфера
-if (ob_get_level() > 0) {
-    ob_end_clean();
-}
+while (ob_get_level()) ob_end_clean();
+
+// Настройка заголовков
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: X-CSRF-Token, X-Requested-With');
 
 // Логирование ошибок
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/evaluate_errors.log');
+error_reporting(E_ALL);
 
 // Подключение конфигурации
 require_once(__DIR__ . '/../config.php');
 
-// Установка заголовков
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
-
-// Логирование запроса
-file_put_contents(__DIR__ . '/api_requests.log', 
-    "\n[" . date('Y-m-d H:i:s') . "] New request\n" . 
-    "Headers: " . json_encode(getallheaders()) . "\n" .
-    "Input: " . file_get_contents('php://input') . "\n",
-    FILE_APPEND
-);
-
-/**
- * Улучшенная обработка ответа API
- */
-function processApiResponse(string $responseBody): array {
-    // Логирование сырого ответа
-    file_put_contents(__DIR__ . '/api_responses.log', 
-        "\n[" . date('Y-m-d H:i:s') . "] API Response\n" . $responseBody . "\n",
-        FILE_APPEND
-    );
-
-    // Проверка на HTML-ошибки
-    if (str_starts_with(trim($responseBody), '<!DOCTYPE') || 
-        str_starts_with(trim($responseBody), '<html')) {
-        throw new Exception("API вернул HTML вместо JSON: " . substr($responseBody, 0, 200));
-    }
-
-    // Попытка декодирования JSON
-    $jsonData = json_decode($responseBody, true);
-    if (json_last_error() === JSON_ERROR_NONE) {
-        return $jsonData;
-    }
-    
-    // Попытки извлечения JSON из разных форматов
-    $patterns = [
-        '/```json\s*(\{.*\})\s*```/s',
-        '/```\s*(\{.*\})\s*```/s',
-        '/\{.*\}/s'
-    ];
-    
-    foreach ($patterns as $pattern) {
-        if (preg_match($pattern, $responseBody, $matches)) {
-            $jsonData = json_decode($matches[1], true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                return $jsonData;
-            }
-        }
-    }
-    
-    throw new Exception("Не удалось распарсить ответ API. Ответ: " . substr($responseBody, 0, 500));
+// Проверка метода запроса
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    die(json_encode(['success' => false, 'error' => 'Метод не поддерживается']));
 }
 
-/**
- * Функция запроса к API с улучшенной обработкой ошибок
- */
-function makeApiRequest(array $data): array {
-    $headers = [
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        'Content-Type: application/json',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
-        'X-Title: HackerSpaceWorkPage'
-    ];
+// Инициализация сессии
+session_start([
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_httponly' => true,
+    'use_strict_mode' => true
+]);
 
-    // Логирование запроса
-    file_put_contents(__DIR__ . '/api_outgoing.log', 
-        "\n[" . date('Y-m-d H:i:s') . "] Outgoing to OpenRouter\n" . 
-        "Headers: " . json_encode($headers) . "\n" .
-        "Data: " . json_encode($data) . "\n",
-        FILE_APPEND
-    );
-
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => OPENROUTER_API_URL,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_TIMEOUT => 60,
-        CURLOPT_HEADER => true,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
-    ]);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-    
-    $headers = substr($response, 0, $headerSize);
-    $body = substr($response, $headerSize);
-    $error = curl_error($ch);
-    curl_close($ch);
-
-    // Логирование ответа
-    file_put_contents(__DIR__ . '/api_incoming.log', 
-        "\n[" . date('Y-m-d H:i:s') . "] Response from OpenRouter\n" . 
-        "HTTP Code: $httpCode\n" .
-        "Headers: $headers\n" .
-        "Body: $body\n" .
-        "Error: $error\n",
-        FILE_APPEND
-    );
-
-    if ($error) {
-        throw new Exception("CURL error: $error");
-    }
-
-    return [
-        'code' => $httpCode,
-        'headers' => $headers,
-        'body' => $body
-    ];
+// Проверка CSRF токена
+if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || 
+    empty($_SESSION['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
+    http_response_code(403);
+    die(json_encode(['success' => false, 'error' => 'Ошибка проверки CSRF токена']));
 }
 
-try {
-    // Проверка сессии и CSRF-токена
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+// Получение входных данных
+$input = json_decode(file_get_contents('php://input'), true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => 'Неверный JSON формат']));
+}
 
-    if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || 
-        empty($_SESSION['csrf_token']) || 
-        !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
-        throw new Exception('Ошибка проверки CSRF-токена', 403);
+// Валидация входных данных
+$requiredFields = ['solution', 'language'];
+foreach ($requiredFields as $field) {
+    if (empty($input[$field])) {
+        http_response_code(400);
+        die(json_encode(['success' => false, 'error' => "Обязательное поле отсутствует: $field"]));
     }
+}
 
-    // Получение и валидация входных данных
-    $input = json_decode(file_get_contents('php://input'), true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Неверный JSON-ввод: ' . json_last_error_msg(), 400);
-    }
+// Проверка поддерживаемых языков
+$allowedLanguages = ['javascript', 'php', 'python', 'html', 'css'];
+$language = strtolower($input['language']);
+if (!in_array($language, $allowedLanguages)) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => "Неподдерживаемый язык: $language"]));
+}
 
-    $required = ['solution', 'language'];
-    foreach ($required as $field) {
-        if (empty($input[$field])) {
-            throw new Exception("Обязательное поле отсутствует: $field", 400);
-        }
-    }
+// Проверка существования задания
+if (empty($_SESSION['current_task'])) {
+    http_response_code(404);
+    die(json_encode(['success' => false, 'error' => 'Задание не найдено']));
+}
 
-    if (!isset($_SESSION['current_task'])) {
-        throw new Exception('Активное задание не найдено', 404);
-    }
+$task = $_SESSION['current_task'];
 
-    $task = $_SESSION['current_task'];
-    
-    // Формирование промпта
-    $prompt = [
-        'model' => DEVSTRAL_MODEL,
-        'messages' => [
-            [
-                'role' => 'system',
-                'content' => 'Ты — ассистент для проверки кода. Отвечай ТОЛЬКО в формате JSON. Шаблон ответа: {
+// Формирование промпта для оценки
+$prompt = [
+    'model' => DEVSTRAL_MODEL,
+    'messages' => [
+        [
+            'role' => 'system',
+            'content' => 'Ты — ассистент для проверки кода. Отвечай ТОЛЬКО в формате JSON. Шаблон ответа: {
   "score": 0-100,
   "correctness": 0-100,
   "efficiency": 0-100,
@@ -178,70 +86,74 @@ try {
   "details": "Подробный анализ",
   "suggestions": ["Конкретные", "рекомендации"]
 }'
-            ],
-            [
-                'role' => 'user',
-                'content' => "Задание: {$task['description']}\nЯзык: {$input['language']}\nРешение:\n{$input['solution']}"
-            ]
         ],
-        'temperature' => 0.2,
-        'max_tokens' => 1500,
-        'response_format' => ['type' => 'json_object']
-    ];
+        [
+            'role' => 'user',
+            'content' => "Задание: {$task['description']}\nЯзык: $language\nРешение:\n{$input['solution']}"
+        ]
+    ],
+    'temperature' => 0.2,
+    'max_tokens' => 1500,
+    'response_format' => ['type' => 'json_object']
+];
 
+try {
     // Отправка запроса к API
     $response = makeApiRequest($prompt);
 
-    // Проверка HTTP-статуса
+    // Проверка HTTP статуса
     if ($response['code'] !== 200) {
-        throw new Exception("OpenRouter API вернул статус {$response['code']}. Ответ: " . substr($response['body'], 0, 500), $response['code']);
+        throw new Exception("API вернул статус {$response['code']}", $response['code']);
     }
 
-    // Обработка ответа
-    $apiResponse = processApiResponse($response['body']);
-    
-    if (!isset($apiResponse['choices'][0]['message']['content'])) {
-        throw new Exception("Неожиданная структура ответа API: " . json_encode($apiResponse, JSON_UNESCAPED_UNICODE));
-    }
-
-    $content = $apiResponse['choices'][0]['message']['content'];
-    $evaluation = is_string($content) ? json_decode($content, true) : $content;
-
+    // Обработка ответа API
+    $apiResponse = json_decode($response['body'], true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception("Ошибка формата оценки: " . json_last_error_msg() . ". Контент: " . substr($content, 0, 500));
+        throw new Exception("Неверный формат ответа API");
+    }
+
+    if (!isset($apiResponse['choices'][0]['message']['content'])) {
+        throw new Exception("Неожиданная структура ответа API");
+    }
+
+    // Извлечение оценки
+    $evaluation = json_decode($apiResponse['choices'][0]['message']['content'], true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        // Попытка извлечь JSON из строки
+        if (preg_match('/\{.*\}/s', $apiResponse['choices'][0]['message']['content'], $matches)) {
+            $evaluation = json_decode($matches[0], true);
+        }
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Не удалось распарсить оценку");
+        }
     }
 
     // Нормализация оценки
     $evaluation = array_merge([
-        'score' => 50,
-        'correctness' => 50,
-        'efficiency' => 50,
-        'readability' => 50,
-        'message' => 'Проверка завершена',
-        'details' => 'Детальный анализ недоступен',
+        'score' => 0,
+        'correctness' => 0,
+        'efficiency' => 0,
+        'readability' => 0,
+        'message' => 'Проверка не выполнена',
+        'details' => 'Не удалось получить детали оценки',
         'suggestions' => []
     ], $evaluation);
 
-    // Формирование итогового ответа
+    // Формирование результата
     $result = [
         'success' => true,
         'evaluation' => $evaluation,
         'task_id' => $task['id'] ?? null,
-        'language' => $input['language'],
+        'language' => $language,
         'timestamp' => time()
     ];
 
-    // Очистка буфера и вывод результата
-    ob_end_clean();
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
-    // Очистка буфера перед выводом ошибки
-    ob_end_clean();
-    
     // Логирование ошибки
-    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-    
+    error_log("[" . date('Y-m-d H:i:s') . "] Ошибка: " . $e->getMessage());
+
     // Формирование ответа с ошибкой
     http_response_code($e->getCode() ?: 500);
     echo json_encode([
@@ -253,4 +165,44 @@ try {
             'details' => $e->getMessage()
         ]
     ], JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * Отправка запроса к API
+ */
+function makeApiRequest(array $data): array {
+    $headers = [
+        'Authorization: Bearer ' . OPENROUTER_API_KEY,
+        'Content-Type: application/json',
+        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+        'X-Title: HackerSpaceWorkPage'
+    ];
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => OPENROUTER_API_URL,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if (curl_errno($ch)) {
+        $error = curl_error($ch);
+        curl_close($ch);
+        throw new Exception("CURL error: $error");
+    }
+    
+    curl_close($ch);
+
+    return [
+        'code' => $httpCode,
+        'body' => $response
+    ];
 }
