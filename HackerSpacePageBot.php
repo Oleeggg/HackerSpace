@@ -162,7 +162,6 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 </select>
                 <select id="taskLanguage" class="task-select">
                     <option value="javascript">JavaScript</option>
-                    <option value="php">PHP</option>
                     <option value="python">Python</option>
                     <option value="html">HTML/CSS</option>
                 </select>
@@ -186,10 +185,8 @@ if (isset($_POST['delete_account']) && $logged_in) {
                         <span>Язык: </span>
                         <select id="editorLanguage">
                             <option value="javascript">JavaScript</option>
-                            <option value="php">PHP</option>
                             <option value="python">Python</option>
-                            <option value="htmlmixed">HTML</option>
-                            <option value="css">CSS</option>
+                            <option value="htmlmixed">HTML/CSS</option>
                         </select>
                     </div>
                 </div>
