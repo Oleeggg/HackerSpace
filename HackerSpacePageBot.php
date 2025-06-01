@@ -220,6 +220,9 @@ if (isset($_POST['delete_account']) && $logged_in) {
    <script>
     // Получаем CSRF токен при загрузке страницы
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!csrfToken) {
+        console.error('CSRF token is missing!');
+    }
 
     // Инициализация редактора кода
     const codeEditor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
@@ -245,7 +248,8 @@ if (isset($_POST['delete_account']) && $logged_in) {
             'html': 'htmlmixed',
             'css': 'css'
         };
-        codeEditor.setOption('mode', modeMap[this.value]);
+        const selectedMode = modeMap[this.value] || 'javascript';
+        codeEditor.setOption('mode', selectedMode);
     });
 
     // Текущее задание
@@ -278,43 +282,52 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 })
             });
             
+            // Обработка HTTP ошибок
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const errorMsg = errorData.error || `HTTP error! status: ${response.status}`;
+                throw new Error(errorMsg);
             }
             
             const data = await response.json();
             
             if (!data.success) {
-                throw new Error(data.error || 'Unknown error');
+                throw new Error(data.error || 'Не удалось получить задание');
             }
             
             currentTask = data.task;
             
+            // Форматирование вывода задания
             taskDescription.innerHTML = `
                 <div class="task-header">
-                    <h4>${currentTask.title}</h4>
-                    <span class="difficulty-badge ${difficulty}">${currentTask.difficulty}</span>
+                    <h4>${escapeHtml(currentTask.title)}</h4>
+                    <span class="difficulty-badge ${currentTask.difficulty}">${
+                        currentTask.difficulty.charAt(0).toUpperCase() + currentTask.difficulty.slice(1)
+                    }</span>
                 </div>
                 <div class="task-content">
-                    <p>${currentTask.description}</p>
-                    ${currentTask.example ? `
-                    <div class="task-example">
-                        <h5><i class="fas fa-lightbulb"></i> Пример:</h5>
-                        <pre>${currentTask.example}</pre>
-                    </div>` : ''}
+                    <p>${escapeHtml(currentTask.description)}</p>
+                    ${
+                        currentTask.example ? `
+                        <div class="task-example">
+                            <h5><i class="fas fa-lightbulb"></i> Пример:</h5>
+                            <pre>${escapeHtml(currentTask.example)}</pre>
+                        </div>` : ''
+                    }
                 </div>
             `;
             
+            // Установка языка и начального кода
             document.getElementById('editorLanguage').value = language;
-            codeEditor.setOption('mode', language === 'html' ? 'htmlmixed' : language);
+            const editorMode = language === 'html' ? 'htmlmixed' : language;
+            codeEditor.setOption('mode', editorMode);
             codeEditor.setValue(currentTask.initialCode || '');
             
         } catch (error) {
             taskDescription.innerHTML = `
                 <div class="error-message">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <p>Ошибка при получении задания: ${error.message}</p>
+                    <p>Ошибка при получении задания: ${escapeHtml(error.message)}</p>
                     <button onclick="location.reload()">Попробовать снова</button>
                 </div>
             `;
@@ -355,13 +368,20 @@ if (isset($_POST['delete_account']) && $logged_in) {
                 })
             });
             
+            // Обработка HTTP ошибок
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const errorMsg = errorData.error || `HTTP error! status: ${response.status}`;
+                throw new Error(errorMsg);
             }
             
             const evaluation = await response.json();
             
+            if (!evaluation.success) {
+                throw new Error(evaluation.error || 'Ошибка при проверке решения');
+            }
+            
+            // Форматирование результатов проверки
             let resultHTML = `
                 <div class="evaluation-result">
                     <div class="result-header">
@@ -370,26 +390,31 @@ if (isset($_POST['delete_account']) && $logged_in) {
                             <span>${evaluation.evaluation?.score || 0}%</span>
                         </div>
                     </div>
-                    <div class="result-message ${(evaluation.evaluation?.score || 0) > 70 ? 'success' : 'warning'}">
-                        <p>${evaluation.evaluation?.message || 'Нет информации'}</p>
+                    <div class="result-message ${
+                        (evaluation.evaluation?.score || 0) > 70 ? 'success' : 
+                        (evaluation.evaluation?.score || 0) > 40 ? 'warning' : 'error'
+                    }">
+                        <p>${escapeHtml(evaluation.evaluation?.message || 'Нет информации')}</p>
                     </div>
             `;
             
+            // Добавление деталей если есть
             if (evaluation.evaluation?.details) {
                 resultHTML += `
                     <div class="result-details">
                         <h5><i class="fas fa-info-circle"></i> Детали:</h5>
-                        <p>${evaluation.evaluation.details}</p>
+                        <p>${escapeHtml(evaluation.evaluation.details)}</p>
                     </div>
                 `;
             }
             
+            // Добавление рекомендаций если есть
             if (evaluation.evaluation?.suggestions?.length > 0) {
                 resultHTML += `
                     <div class="result-suggestions">
                         <h5><i class="fas fa-lightbulb"></i> Рекомендации:</h5>
                         <ul>
-                            ${evaluation.evaluation.suggestions.map(s => `<li>${s}</li>`).join('')}
+                            ${evaluation.evaluation.suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
                         </ul>
                     </div>
                 `;
@@ -402,21 +427,37 @@ if (isset($_POST['delete_account']) && $logged_in) {
             resultDiv.innerHTML = `
                 <div class="error-message">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <p>Ошибка при проверке решения: ${error.message}</p>
+                    <p>Ошибка при проверке решения: ${escapeHtml(error.message)}</p>
+                    <button onclick="submitSolution()">Попробовать снова</button>
                 </div>
             `;
-            console.error('Ошибка:', error);
+            console.error('Ошибка проверки:', {
+                error: error.message,
+                stack: error.stack,
+                task: currentTask
+            });
         }
     }
 
+    // Вспомогательные функции
     function updateResult(message, type = 'info') {
         const resultDiv = document.getElementById('executionResult');
         resultDiv.innerHTML = `
             <div class="${type}-message">
                 <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
-                <p>${message}</p>
+                <p>${escapeHtml(message)}</p>
             </div>
         `;
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>
         <script>
