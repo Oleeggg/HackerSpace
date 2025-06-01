@@ -97,7 +97,7 @@ function makeApiRequest(array $data): array {
         CURLOPT_HTTPHEADER => $headers,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_TIMEOUT => 30,
+        CURLOPT_TIMEOUT => 60,
         CURLOPT_HEADER => true,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1
     ]);
