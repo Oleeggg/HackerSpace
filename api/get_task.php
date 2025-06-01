@@ -1,252 +1,214 @@
 <?php
 declare(strict_types=1);
-require_once(__DIR__ . '/../config.php');
 
-// Очистка буфера и заголовки
+// Очистка буфера и настройка заголовков
 while (ob_get_level()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Headers: X-CSRF-Token, X-Requested-With');
 
-// Логирование ошибок
+// Логирование
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/api_errors.log');
-ini_set('display_errors', 0);
+ini_set('error_log', __DIR__ . '/evaluate_errors.log');
+error_reporting(E_ALL);
 
-function logError(string $message): void {
-    error_log(date('[Y-m-d H:i:s] ') . $message);
+require_once(__DIR__ . '/../config.php');
+
+// Проверка метода
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    die(json_encode(['success' => false, 'error' => 'Only POST method allowed']));
 }
 
-function validateInput(array $input): array {
-    $required = ['language', 'difficulty'];
-    foreach ($required as $field) {
-        if (empty($input[$field])) {
-            throw new InvalidArgumentException("Missing required field: $field");
-        }
-    }
+// Инициализация сессии
+session_start([
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_httponly' => true,
+    'use_strict_mode' => true
+]);
 
-    $allowedLanguages = ['javascript', 'php', 'python', 'html'];
-    if (!in_array(strtolower($input['language']), $allowedLanguages)) {
-        throw new InvalidArgumentException("Invalid language specified");
-    }
-
-    $allowedDifficulties = ['beginner', 'intermediate', 'advanced'];
-    if (!in_array(strtolower($input['difficulty']), $allowedDifficulties)) {
-        throw new InvalidArgumentException("Invalid difficulty level");
-    }
-
-    return [
-        'language' => strtolower($input['language']),
-        'difficulty' => strtolower($input['difficulty'])
-    ];
+// Проверка CSRF
+if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || empty($_SESSION['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
+    http_response_code(403);
+    die(json_encode(['success' => false, 'error' => 'CSRF token validation failed']));
 }
 
-function extractJsonFromResponse(string $responseBody): string {
-    if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $responseBody, $matches)) {
-        return $matches[1];
-    }
-    
-    if (preg_match('/<pre[^>]*>(.*?)<\/pre>/is', $responseBody, $matches)) {
-        return $matches[1];
-    }
-    
-    if (preg_match('/\{.*\}/s', $responseBody, $matches)) {
-        return $matches[0];
-    }
-    
-    return $responseBody;
+// Получение данных
+$input = file_get_contents('php://input');
+if ($input === false) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => 'Failed to read input data']));
 }
 
-function parseApiResponse(string $responseBody): array {
-    file_put_contents(__DIR__ . '/last_api_response.txt', $responseBody);
-    
-    $jsonString = extractJsonFromResponse($responseBody);
-    
-    $data = json_decode($jsonString, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException("Invalid API response JSON: " . json_last_error_msg() . ". Raw response: " . substr($responseBody, 0, 200));
-    }
-
-    if (isset($data['choices'][0]['message']['content'])) {
-        $content = $data['choices'][0]['message']['content'];
-        
-        if (is_string($content)) {
-            $content = extractJsonFromResponse($content);
-            $content = json_decode($content, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new RuntimeException("Invalid task content JSON: " . json_last_error_msg());
-            }
-        }
-        
-        $data = $content;
-    }
-
-    $requiredFields = ['title', 'description'];
-    foreach ($requiredFields as $field) {
-        if (!isset($data[$field])) {
-            throw new RuntimeException("Missing required field in task: $field");
-        }
-    }
-
-    return $data;
+$input = json_decode($input, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => 'Invalid JSON input: ' . json_last_error_msg()]));
 }
+
+// Валидация
+$required = ['solution', 'language'];
+foreach ($required as $field) {
+    if (empty($input[$field])) {
+        http_response_code(400);
+        die(json_encode(['success' => false, 'error' => "Missing required field: $field"]));
+    }
+}
+
+$allowedLanguages = ['javascript', 'php', 'python', 'html', 'css'];
+if (!in_array(strtolower($input['language']), $allowedLanguages)) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => 'Unsupported language']));
+}
+
+if (empty($_SESSION['current_task'])) {
+    http_response_code(404);
+    die(json_encode(['success' => false, 'error' => 'Task not found']));
+}
+
+$task = $_SESSION['current_task'];
 
 try {
-    // Проверка AJAX запроса
-    if (empty($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) != 'xmlhttprequest') {
-        throw new RuntimeException('Direct access not allowed');
-    }
-
-    // Проверка метода запроса
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        http_response_code(405);
-        throw new RuntimeException('Only POST method allowed');
-    }
-
-    // Получение и проверка входных данных
-    $jsonInput = file_get_contents('php://input');
-    if ($jsonInput === false) {
-        throw new RuntimeException('Failed to read input data');
-    }
-
-    $input = json_decode($jsonInput, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new RuntimeException("Invalid JSON input: " . json_last_error_msg());
-    }
-
-    $validatedInput = validateInput($input);
-
-    // Очищаем предыдущее задание из сессии
-    if (isset($_SESSION['current_task'])) {
-        unset($_SESSION['current_task']);
-    }
-
-    // Формирование промпта
-    $prompt = <<<PROMPT
-    Generate a programming task in STRICT JSON format (no Markdown, no code blocks) with these fields:
-    {
-        "title": "Task title",
-        "description": "Detailed task description with requirements",
-        "example": "Code example solution",
-        "initialCode": "Starter code for the task",
-        "difficulty": "{$validatedInput['difficulty']}",
-        "language": "{$validatedInput['language']}"
-    }
-    
-    Important:
-    - Return ONLY the JSON object
-    - Do not wrap response in Markdown or HTML
-    - Do not include any explanations
-    PROMPT;
-
-    $apiResponse = makeApiRequest([
+    // Формирование промпта с улучшенными инструкциями
+    $prompt = [
         'model' => DEVSTRAL_MODEL,
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a programming task generator. Respond ONLY with valid JSON object containing the task.'
+                'content' => 'You are a code evaluation assistant. ALWAYS respond with VALID JSON ONLY using this exact structure:
+{
+  "score": "number 0-100",
+  "correctness": "number 0-100",
+  "efficiency": "number 0-100", 
+  "readability": "number 0-100",
+  "message": "brief summary",
+  "details": "detailed analysis",
+  "suggestions": ["array", "of", "improvements"]
+}'
             ],
             [
                 'role' => 'user',
-                'content' => $prompt
+                'content' => "TASK: {$task['description']}\nLANGUAGE: {$input['language']}\nSOLUTION:\n{$input['solution']}"
             ]
         ],
-        'temperature' => 0.7,
+        'temperature' => 0.3,
+        'max_tokens' => 2000,
         'response_format' => ['type' => 'json_object']
-    ]);
-
-    if ($apiResponse['code'] !== 200) {
-        throw new RuntimeException("API request failed with status {$apiResponse['code']}: " . substr(strip_tags($apiResponse['body']), 0, 100));
-    }
-
-    $content = parseApiResponse($apiResponse['body']);
-
-    // Сохраняем задание в сессии
-    $_SESSION['current_task'] = [
-        'id' => uniqid('task_', true),
-        'title' => $content['title'] ?? 'Programming Task',
-        'description' => $content['description'] ?? '',
-        'example' => $content['example'] ?? '',
-        'initialCode' => $content['initialCode'] ?? getDefaultCode($validatedInput['language']),
-        'difficulty' => $content['difficulty'] ?? $validatedInput['difficulty'],
-        'language' => $content['language'] ?? $validatedInput['language']
     ];
 
-    // Формирование ответа
-    $response = [
-        'success' => true,
-        'task' => $_SESSION['current_task']
-    ];
-
-    echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-} catch (InvalidArgumentException $e) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
-} catch (Exception $e) {
-    http_response_code(500);
-    $errorResponse = [
-        'success' => false,
-        'error' => $e->getMessage()
-    ];
-    
-    if (DEBUG_MODE) {
-        $errorResponse['trace'] = $e->getTraceAsString();
-        $errorResponse['raw_response'] = file_exists(__DIR__ . '/last_api_response.txt') 
-            ? file_get_contents(__DIR__ . '/last_api_response.txt')
-            : null;
-    }
-    
-    echo json_encode($errorResponse, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    logError("Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
-}
-
-function getDefaultCode(string $language): string {
-    $templates = [
-        'javascript' => '// Your code here\nfunction solution() {\n  // Implement your solution\n}',
-        'php' => "<?php\n// Your code here\nfunction solution() {\n  // Implement your solution\n}",
-        'python' => '# Your code here\ndef solution():\n    # Implement your solution',
-        'html' => '<!-- Your HTML here -->\n<div class="solution">\n  <!-- Implement your solution -->\n</div>'
-    ];
-    
-    return $templates[strtolower($language)] ?? '';
-}
-
-function makeApiRequest(array $data): array {
-    $headers = [
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        'Content-Type: application/json',
-        'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
-        'X-Title: HackerSpaceWorkPage'
-    ];
-
+    // Отправка запроса с улучшенной обработкой
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => OPENROUTER_API_URL,
         CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => json_encode($prompt),
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . OPENROUTER_API_KEY,
+            'Content-Type: application/json',
+            'HTTP-Referer: ' . ($_SERVER['HTTP_HOST'] ?? 'localhost'),
+            'X-Title: HackerSpaceWorkPage'
+        ],
         CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_CONNECTTIMEOUT => 15,
         CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_TIMEOUT => 100,
-        CURLOPT_HEADER => false
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_HEADER => true
     ]);
 
-    $response = curl_exec($ch);
+    $rawResponse = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headers = substr($rawResponse, 0, $headerSize);
+    $body = substr($rawResponse, $headerSize);
     
     if (curl_errno($ch)) {
-        $error = curl_error($ch);
-        curl_close($ch);
-        throw new RuntimeException("CURL Error: $error");
+        throw new Exception("CURL error: " . curl_error($ch));
     }
     
     curl_close($ch);
 
-    return [
-        'code' => $httpCode,
-        'body' => $response
-    ];
+    // Логирование сырого ответа для отладки
+    file_put_contents(__DIR__ . '/api_response.log', 
+        "[" . date('Y-m-d H:i:s') . "] Response:\n" . 
+        "HTTP Code: $httpCode\nHeaders: $headers\nBody: $body\n",
+        FILE_APPEND
+    );
+
+    if ($httpCode !== 200) {
+        throw new Exception("API returned HTTP $httpCode");
+    }
+
+    // Улучшенная обработка ответа
+    $response = json_decode($body, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception("Invalid API response format");
+    }
+
+    if (empty($response['choices'][0]['message']['content'])) {
+        throw new Exception("Empty content in API response");
+    }
+
+    $content = $response['choices'][0]['message']['content'];
+    
+    // Парсинг оценки с несколькими fallback-ами
+    $evaluation = json_decode($content, true);
+    if ($evaluation === null) {
+        // Попытка 1: Извлечь JSON из markdown
+        if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $content, $matches)) {
+            $evaluation = json_decode($matches[1], true);
+        }
+        
+        // Попытка 2: Найти первый JSON в тексте
+        if ($evaluation === null && preg_match('/\{.*\}/s', $content, $matches)) {
+            $evaluation = json_decode($matches[0], true);
+        }
+        
+        if ($evaluation === null) {
+            throw new Exception("Could not parse evaluation from: " . substr($content, 0, 200));
+        }
+    }
+
+    // Нормализация структуры
+    $evaluation = array_merge([
+        'score' => 0,
+        'correctness' => 0,
+        'efficiency' => 0,
+        'readability' => 0,
+        'message' => 'No evaluation provided',
+        'details' => '',
+        'suggestions' => []
+    ], $evaluation);
+
+    // Валидация оценки
+    if (!is_numeric($evaluation['score']) || $evaluation['score'] < 0 || $evaluation['score'] > 100) {
+        $evaluation['score'] = 0;
+    }
+
+    // Успешный ответ
+    echo json_encode([
+        'success' => true,
+        'evaluation' => $evaluation,
+        'debug' => DEBUG_MODE ? ['raw_content' => $content] : null
+    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+} catch (Exception $e) {
+    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation Error: " . $e->getMessage());
+    
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Evaluation failed. Please try again.',
+        'evaluation' => [
+            'score' => 0,
+            'message' => 'Evaluation failed',
+            'details' => $e->getMessage()
+        ],
+        'debug' => DEBUG_MODE ? [
+            'trace' => $e->getTraceAsString(),
+            'last_response' => $body ?? null
+        ] : null
+    ], JSON_UNESCAPED_UNICODE);
 }
