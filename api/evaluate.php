@@ -36,10 +36,16 @@ if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || empty($_SESSION['csrf_token']) ||
 }
 
 // Получение данных
-$input = json_decode(file_get_contents('php://input'), true);
+$input = file_get_contents('php://input');
+if ($input === false) {
+    http_response_code(400);
+    die(json_encode(['success' => false, 'error' => 'Failed to read input data']));
+}
+
+$input = json_decode($input, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
     http_response_code(400);
-    die(json_encode(['success' => false, 'error' => 'Invalid JSON input']));
+    die(json_encode(['success' => false, 'error' => 'Invalid JSON input: ' . json_last_error_msg()]));
 }
 
 // Валидация
@@ -194,7 +200,7 @@ try {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
+        'error' => 'Evaluation failed. Please try again.',
         'evaluation' => [
             'score' => 0,
             'message' => 'Evaluation failed',
