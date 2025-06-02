@@ -1,7 +1,14 @@
 <?php
 declare(strict_types=1);
 
-// Регистрация обработчика фатальных ошибок
+// 1. Сначала запускаем сессию - ДО ЛЮБОГО ВЫВОДА
+session_start([
+    'cookie_secure' => isset($_SERVER['HTTPS']),
+    'cookie_httponly' => true,
+    'use_strict_mode' => true
+]);
+
+// 2. Регистрация обработчика фатальных ошибок
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
@@ -17,41 +24,42 @@ register_shutdown_function(function() {
     }
 });
 
-// Очистка буфера и настройка заголовков
+// 3. Очистка буфера и настройка заголовков
 while (ob_get_level()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: X-CSRF-Token, X-Requested-With');
 
-// Логирование
+// 4. Логирование ошибок
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__ . '/evaluate_errors.log');
 error_reporting(E_ALL);
 
 require_once(__DIR__ . '/../config.php');
 
-// Проверка метода
+// 5. Проверка метода запроса
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     die(json_encode(['success' => false, 'error' => 'Only POST method allowed']));
 }
 
-// Инициализация сессии
-session_start([
-    'cookie_secure' => isset($_SERVER['HTTPS']),
-    'cookie_httponly' => true,
-    'use_strict_mode' => true
-]);
-
-// Проверка CSRF
-if (empty($_SERVER['HTTP_X_CSRF_TOKEN']) || empty($_SESSION['csrf_token']) || 
-    !hash_equals($_SESSION['csrf_token'], $_SERVER['HTTP_X_CSRF_TOKEN'])) {
+// 6. Улучшенная проверка CSRF токена
+$csrfTokenHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+if (empty($csrfTokenHeader) || empty($_SESSION['csrf_token']) || 
+    !hash_equals($_SESSION['csrf_token'], $csrfTokenHeader)) {
     http_response_code(403);
-    die(json_encode(['success' => false, 'error' => 'CSRF token validation failed']));
+    die(json_encode([
+        'success' => false, 
+        'error' => 'CSRF token validation failed',
+        'debug' => DEBUG_MODE ? [
+            'expected' => $_SESSION['csrf_token'],
+            'received' => $csrfTokenHeader
+        ] : null
+    ]));
 }
 
-// Получение данных
+// 7. Получение и валидация входных данных
 $input = file_get_contents('php://input');
 if ($input === false) {
     http_response_code(400);
@@ -61,10 +69,14 @@ if ($input === false) {
 $input = json_decode($input, true);
 if (json_last_error() !== JSON_ERROR_NONE) {
     http_response_code(400);
-    die(json_encode(['success' => false, 'error' => 'Invalid JSON input: ' . json_last_error_msg()]));
+    die(json_encode([
+        'success' => false, 
+        'error' => 'Invalid JSON input: ' . json_last_error_msg(),
+        'input_sample' => substr($input, 0, 200)
+    ]));
 }
 
-// Валидация
+// 8. Валидация обязательных полей
 $required = ['solution', 'language'];
 foreach ($required as $field) {
     if (empty($input[$field])) {
@@ -87,7 +99,7 @@ if (empty($_SESSION['current_task'])) {
 $task = $_SESSION['current_task'];
 
 try {
-    // Формирование промпта
+    // 9. Формирование промпта для API
     $prompt = [
         'model' => DEVSTRAL_MODEL,
         'messages' => [
@@ -119,7 +131,7 @@ IMPORTANT:
         'response_format' => ['type' => 'json_object']
     ];
 
-    // Отправка запроса
+    // 10. Отправка запроса к API с улучшенной обработкой ошибок
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => OPENROUTER_API_URL,
@@ -140,23 +152,18 @@ IMPORTANT:
     ]);
 
     $rawResponse = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-    $headers = substr($rawResponse, 0, $headerSize);
-    $body = substr($rawResponse, $headerSize);
     
     if (curl_errno($ch)) {
         throw new Exception("CURL error: " . curl_error($ch));
     }
     
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headers = substr($rawResponse, 0, $headerSize);
+    $body = substr($rawResponse, $headerSize);
     curl_close($ch);
 
-    // Проверка на HTML в ответе
-    if (preg_match('/<(html|body|div|br)[^>]*>/i', $body)) {
-        throw new Exception("API returned HTML content instead of JSON");
-    }
-
-    // Логирование сырого ответа
+    // 11. Логирование сырого ответа
     file_put_contents(__DIR__ . '/api_response.log', 
         "[" . date('Y-m-d H:i:s') . "] Response:\n" . 
         "HTTP Code: $httpCode\nHeaders: $headers\nBody: " . substr($body, 0, 1000) . "\n",
@@ -164,10 +171,10 @@ IMPORTANT:
     );
 
     if ($httpCode !== 200) {
-        throw new Exception("API returned HTTP $httpCode");
+        throw new Exception("API returned HTTP $httpCode. Response: " . substr($body, 0, 500));
     }
 
-    // Парсинг ответа с улучшенной обработкой ошибок
+    // 12. Парсинг ответа с несколькими уровнями проверок
     $response = json_decode($body, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
         // Попытка извлечь JSON из возможного текстового ответа
@@ -176,7 +183,7 @@ IMPORTANT:
         }
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("Invalid API response format. Raw response start: " . substr($body, 0, 200));
+            throw new Exception("Invalid API response format. Raw response: " . substr($body, 0, 500));
         }
     }
 
@@ -186,7 +193,7 @@ IMPORTANT:
 
     $content = $response['choices'][0]['message']['content'];
     
-    // Парсинг оценки с несколькими уровнями fallback
+    // 13. Парсинг оценки с валидацией структуры
     $evaluation = json_decode($content, true);
     if ($evaluation === null) {
         // Попытка извлечь JSON из markdown
@@ -194,17 +201,24 @@ IMPORTANT:
             $evaluation = json_decode($matches[1], true);
         }
         
-        // Попытка найти первый JSON в тексте
         if ($evaluation === null && preg_match('/\{.*\}/s', $content, $matches)) {
             $evaluation = json_decode($matches[0], true);
         }
         
         if ($evaluation === null) {
-            throw new Exception("Could not parse evaluation from: " . substr($content, 0, 200));
+            throw new Exception("Could not parse evaluation from: " . substr($content, 0, 500));
         }
     }
 
-    // Нормализация структуры ответа
+    // 14. Валидация обязательных полей оценки
+    $requiredEvaluationFields = ['score', 'message'];
+    foreach ($requiredEvaluationFields as $field) {
+        if (!isset($evaluation[$field])) {
+            throw new Exception("Evaluation missing required field: $field");
+        }
+    }
+
+    // 15. Нормализация структуры ответа
     $evaluation = array_merge([
         'score' => 0,
         'correctness' => 0,
@@ -215,7 +229,7 @@ IMPORTANT:
         'suggestions' => []
     ], $evaluation);
 
-    // Валидация числовых значений
+    // 16. Валидация числовых значений
     $numericFields = ['score', 'correctness', 'efficiency', 'readability'];
     foreach ($numericFields as $field) {
         if (!is_numeric($evaluation[$field])) {
@@ -225,15 +239,21 @@ IMPORTANT:
         }
     }
 
-    // Успешный ответ
+    // 17. Успешный ответ
     echo json_encode([
         'success' => true,
         'evaluation' => $evaluation,
-        'debug' => DEBUG_MODE ? ['raw_content' => $content] : null
+        'debug' => DEBUG_MODE ? [
+            'raw_content' => $content,
+            'response_sample' => substr($body, 0, 500)
+        ] : null
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
-    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
+    // 18. Улучшенное логирование ошибок
+    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation Error: " . $e->getMessage() . 
+              "\nTrace: " . $e->getTraceAsString() . 
+              "\nInput: " . json_encode($input, JSON_PRETTY_PRINT));
     
     http_response_code(500);
     echo json_encode([
@@ -246,7 +266,8 @@ IMPORTANT:
         ],
         'debug' => DEBUG_MODE ? [
             'trace' => $e->getTraceAsString(),
-            'last_response' => isset($body) ? substr($body, 0, 500) : null
+            'last_response' => isset($body) ? substr($body, 0, 500) : null,
+            'input_sample' => isset($input) ? $input : null
         ] : null
     ], JSON_UNESCAPED_UNICODE);
 }
