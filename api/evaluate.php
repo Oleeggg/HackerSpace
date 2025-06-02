@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 // 6. Проверка CSRF токена
 $csrfTokenHeader = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
-if (empty($csrfTokenHeader) {
+if (empty($csrfTokenHeader)) {
     http_response_code(403);
     die(json_encode(['success' => false, 'error' => 'CSRF token is missing']));
 }
