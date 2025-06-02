@@ -1,5 +1,9 @@
 <?php
 declare(strict_types=1);
+
+set_time_limit(120); // Увеличиваем лимит до 2 минут
+ini_set('memory_limit', '256M');
+
 require_once(__DIR__ . '/../config.php');
 
 // Очистка буфера и заголовки
