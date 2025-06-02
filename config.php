@@ -2,15 +2,11 @@
 // Инициализация сессии и CSRF токена
 if (session_status() === PHP_SESSION_NONE) {
     session_start([
-        'name' => 'HackerSpaceSess',
-        'cookie_lifetime' => 86400,
         'cookie_secure' => isset($_SERVER['HTTPS']),
         'cookie_httponly' => true,
-        'use_strict_mode' => true,
-        'cookie_samesite' => 'Lax'
+        'use_strict_mode' => true
     ]);
 }
-
 // Включение обработки CORS в самом начале
 header("Access-Control-Allow-Origin: " . (isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*'));
 header("Access-Control-Allow-Methods: POST, OPTIONS");
