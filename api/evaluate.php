@@ -1,6 +1,22 @@
 <?php
 declare(strict_types=1);
 
+// Регистрация обработчика фатальных ошибок
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        while (ob_get_level()) ob_end_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Internal server error',
+            'debug' => DEBUG_MODE ? $error : null
+        ]);
+        exit;
+    }
+});
+
 // Очистка буфера и настройка заголовков
 while (ob_get_level()) ob_end_clean();
 header('Content-Type: application/json; charset=utf-8');
@@ -71,22 +87,27 @@ if (empty($_SESSION['current_task'])) {
 $task = $_SESSION['current_task'];
 
 try {
-    // Формирование промпта с улучшенными инструкциями
+    // Формирование промпта
     $prompt = [
         'model' => DEVSTRAL_MODEL,
         'messages' => [
             [
                 'role' => 'system',
-                'content' => 'You are a code evaluation assistant. ALWAYS respond with VALID JSON ONLY using this exact structure:
+                'content' => 'You are a code evaluation assistant. Respond STRICTLY with VALID JSON ONLY using this exact structure:
 {
-  "score": "number 0-100",
-  "correctness": "number 0-100",
-  "efficiency": "number 0-100", 
-  "readability": "number 0-100",
+  "score": 0-100,
+  "correctness": 0-100,
+  "efficiency": 0-100, 
+  "readability": 0-100,
   "message": "brief summary",
   "details": "detailed analysis",
   "suggestions": ["array", "of", "improvements"]
-}'
+}
+
+IMPORTANT:
+- Do NOT include any additional text outside the JSON
+- Do NOT wrap response in markdown or code blocks
+- Do NOT include any explanations'
             ],
             [
                 'role' => 'user',
@@ -98,7 +119,7 @@ try {
         'response_format' => ['type' => 'json_object']
     ];
 
-    // Отправка запроса с улучшенной обработкой
+    // Отправка запроса
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => OPENROUTER_API_URL,
@@ -130,10 +151,15 @@ try {
     
     curl_close($ch);
 
-    // Логирование сырого ответа для отладки
+    // Проверка на HTML в ответе
+    if (preg_match('/<(html|body|div|br)[^>]*>/i', $body)) {
+        throw new Exception("API returned HTML content instead of JSON");
+    }
+
+    // Логирование сырого ответа
     file_put_contents(__DIR__ . '/api_response.log', 
         "[" . date('Y-m-d H:i:s') . "] Response:\n" . 
-        "HTTP Code: $httpCode\nHeaders: $headers\nBody: $body\n",
+        "HTTP Code: $httpCode\nHeaders: $headers\nBody: " . substr($body, 0, 1000) . "\n",
         FILE_APPEND
     );
 
@@ -141,10 +167,17 @@ try {
         throw new Exception("API returned HTTP $httpCode");
     }
 
-    // Улучшенная обработка ответа
+    // Парсинг ответа с улучшенной обработкой ошибок
     $response = json_decode($body, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception("Invalid API response format");
+        // Попытка извлечь JSON из возможного текстового ответа
+        if (preg_match('/\{.*\}/s', $body, $matches)) {
+            $response = json_decode($matches[0], true);
+        }
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("Invalid API response format. Raw response start: " . substr($body, 0, 200));
+        }
     }
 
     if (empty($response['choices'][0]['message']['content'])) {
@@ -153,15 +186,15 @@ try {
 
     $content = $response['choices'][0]['message']['content'];
     
-    // Парсинг оценки с несколькими fallback-ами
+    // Парсинг оценки с несколькими уровнями fallback
     $evaluation = json_decode($content, true);
     if ($evaluation === null) {
-        // Попытка 1: Извлечь JSON из markdown
+        // Попытка извлечь JSON из markdown
         if (preg_match('/```(?:json)?\s*(\{.*\})\s*```/s', $content, $matches)) {
             $evaluation = json_decode($matches[1], true);
         }
         
-        // Попытка 2: Найти первый JSON в тексте
+        // Попытка найти первый JSON в тексте
         if ($evaluation === null && preg_match('/\{.*\}/s', $content, $matches)) {
             $evaluation = json_decode($matches[0], true);
         }
@@ -171,7 +204,7 @@ try {
         }
     }
 
-    // Нормализация структуры
+    // Нормализация структуры ответа
     $evaluation = array_merge([
         'score' => 0,
         'correctness' => 0,
@@ -182,9 +215,14 @@ try {
         'suggestions' => []
     ], $evaluation);
 
-    // Валидация оценки
-    if (!is_numeric($evaluation['score']) || $evaluation['score'] < 0 || $evaluation['score'] > 100) {
-        $evaluation['score'] = 0;
+    // Валидация числовых значений
+    $numericFields = ['score', 'correctness', 'efficiency', 'readability'];
+    foreach ($numericFields as $field) {
+        if (!is_numeric($evaluation[$field])) {
+            $evaluation[$field] = 0;
+        } else {
+            $evaluation[$field] = max(0, min(100, (int)$evaluation[$field]));
+        }
     }
 
     // Успешный ответ
@@ -195,7 +233,7 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
-    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation Error: " . $e->getMessage());
+    error_log("[" . date('Y-m-d H:i:s') . "] Evaluation Error: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
     
     http_response_code(500);
     echo json_encode([
@@ -208,11 +246,10 @@ try {
         ],
         'debug' => DEBUG_MODE ? [
             'trace' => $e->getTraceAsString(),
-            'last_response' => $body ?? null
+            'last_response' => isset($body) ? substr($body, 0, 500) : null
         ] : null
     ], JSON_UNESCAPED_UNICODE);
 }
-
 /**
  * Отправка запроса к API
  */
