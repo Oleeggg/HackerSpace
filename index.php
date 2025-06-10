@@ -256,7 +256,7 @@ if (isset($_POST['send_feedback'])) {
         <div class="logos">
             <img  style="background-image: url(photo/YRK.png);" alt="УРК">
             <img style="" alt="ЮУТУ">
-        </div
+        </div>
     </div>
 
     <!-- Профиль пользователя (только для авторизованных) -->
