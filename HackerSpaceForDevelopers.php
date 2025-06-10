@@ -34,7 +34,7 @@
                     <p>Форумы и чаты для общения с другими разработчиками, также имеется возможность задать вопросы и получить ответы от экспертов.</p>
                     
                     <div class="developers_container">
-                        <img src="image/How_to_start.jpg" class="how_to_start_img">
+                        <img src="photo/hacker.jpg" class="how_to_start_img">
                         <div class="how_to_start_text">
                             <h1 class="title_for_developers">Как начать?</h1>
                             <p>Если вы новичок и не знаете, с чего начать, мы поможем вам сделать первые шаги!</p>
