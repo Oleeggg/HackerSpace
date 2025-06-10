@@ -55,5 +55,4 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // В конце файла — очистить буфер
-ob_end_clean();
 ?>
