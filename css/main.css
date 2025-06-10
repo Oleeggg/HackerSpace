@@ -729,6 +729,7 @@ p {
         }
         
 /* Стили для модального окна настроек */
+/* Стили для модального окна настроек */
 .settings-modal {
     display: none;
     position: fixed;
@@ -740,14 +741,165 @@ p {
     z-index: 1000;
     justify-content: center;
     align-items: center;
+    animation: fadeIn 0.3s ease;
 }
 
 .settings-content {
     background-color: #fff;
-    border-radius: 8px;
-    width: 400px;
+    border-radius: 12px;
+    width: 450px;
     max-width: 90%;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    overflow: hidden;
+    transform: translateY(0);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.settings-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.settings-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.settings-close {
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.settings-close:hover {
+    transform: scale(1.2);
+}
+
+.settings-body {
+    padding: 20px;
+}
+
+.setting-option {
+    margin-bottom: 25px;
+}
+
+.option-title {
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+    color: #555;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.language-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #e0e0e0;
+}
+
+.language-option:hover {
+    background-color: #f1f3f5;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.language-check {
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.theme-options {
+    display: flex;
+    gap: 10px;
+}
+
+.theme-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    border: 1px solid #e0e0e0;
+}
+
+.theme-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.theme-btn.active {
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    border-color: transparent;
+}
+
+.settings-footer {
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.save-btn {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #6e8efb, #a777e3);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(106, 142, 251, 0.3);
+}
+
+.cancel-btn {
+    padding: 10px 20px;
+    background-color: #f8f9fa;
+    color: #555;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+    background-color: #f1f3f5;
+    transform: translateY(-2px);
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* ... остальные стили для настроек ... */
