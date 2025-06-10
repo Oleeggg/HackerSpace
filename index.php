@@ -252,7 +252,7 @@ if (isset($_POST['send_feedback'])) {
         </div>
     </div>
     <div class="had_container">
-        <p>Более 35% разработчиков на всему миру и 3000 компаний используют HackerSpace</p>
+        <p>HackerSpace создан при участии УРК и ЮУТУ</p>
         <div class="logos">
             <img src="photo/YRK.png" alt="УРК">
             <img src="photo/YTU.png" alt="ЮУТУ">
