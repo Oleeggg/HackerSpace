@@ -255,7 +255,7 @@ if (isset($_POST['send_feedback'])) {
         <p>Более 35% разработчиков на всему миру и 3000 компаний используют HackerSpace</p>
         <div class="logos">
             <img src="photo/YRK.png" alt="УРК">
-            <img src="photo/UTY.png" alt="ЮУТУ">
+            <img src="photo/YTU.png" alt="ЮУТУ">
         </div>
     </div>
 
