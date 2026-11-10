@@ -2,7 +2,7 @@
 
 Дипломная работа.
 
-Использованные технологии: Html, SCC, JS, PHP, VIN API, DOKER.
+Использованные технологии: Html, SCC, JS, PHP, VIN API, DOKER, Visual Studio Code
 
 Скриншоты: 
 
@@ -16,5 +16,29 @@
 
 
 <img width="756" height="1087" alt="image" src="https://github.com/user-attachments/assets/900d0ae5-9b71-40f7-ab6a-747e7cb9e16d" /> HackerSpaceForDevelopers.php
+
+
+
+<img width="711" height="861" alt="image" src="https://github.com/user-attachments/assets/0d4eacc5-7523-4212-833c-94bc33d1b9e3" /> модальное окно авторизации.
+
+
+<img width="706" height="861" alt="image" src="https://github.com/user-attachments/assets/4f52f01e-35e0-4b0d-9947-455404c4671c" /> модальное окно регистрации. 
+
+
+<img width="238" height="114" alt="image" src="https://github.com/user-attachments/assets/8247bbcb-b6b2-4655-930c-c3d162a641fa" /> интерактивная иконка профиля пользователя.
+
+
+<img width="380" height="392" alt="image" src="https://github.com/user-attachments/assets/626ba894-2d9a-4702-8208-8e9e9547ba70" /> всплывающее меню профиля. 
+
+
+<img width="767" height="729" alt="image" src="https://github.com/user-attachments/assets/570a16e8-6753-4a7f-9fce-80901f079bb5" /> модальное окно обратной связи.
+
+<img width="764" height="416" alt="image" src="https://github.com/user-attachments/assets/df01bfa5-c03c-47f0-a968-ab25ec33c393" /> модальное окно профиля.
+
+
+
+
+
+
 
 
