@@ -28,8 +28,8 @@
 
 ### Frontend
 
-- HTML5
-- CSS3
+- HTML
+- CSS
 - JavaScript
 - CodeMirror — редактор кода с подсветкой синтаксиса
 - Font Awesome — иконки интерфейса
