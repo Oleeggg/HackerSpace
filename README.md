@@ -2,5 +2,5 @@
 
 Дипломная работа.
 
-Использованные технологии: Html, CSS, JS, PHP, OpenRouter API, DOKER, Visual Studio Code
+Использованные технологии: Html, CSS, JS, PHP, OpenRouter API, DOKER.
 
